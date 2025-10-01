@@ -1,0 +1,210 @@
+// Fonts
+@import url('https://fonts.bunny.net/css?family=Inter:400,500,600,700|Nunito:400,600');
+
+// Light theme only - no dark mode support
+:root {
+	--color-bg: #ffffff; /* Pure white background */
+	--color-surface: #ffffff;
+	--color-text: #0b0f1a;
+	--color-muted: #6b7280;
+	--color-primary: #2563eb; // blue-600
+	--color-primary-contrast: #ffffff;
+	--color-border: #e5e7eb;
+	--radius-sm: 6px;
+	--radius-md: 10px;
+	--radius-lg: 16px;
+	--shadow-sm: 0 1px 2px rgba(0,0,0,0.06);
+	--shadow-md: 0 8px 24px rgba(0,0,0,0.08);
+	--focus-ring: 0 0 0 3px rgba(37, 99, 235, 0.35);
+	--font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji', sans-serif;
+}
+
+html { scroll-behavior: smooth; }
+
+// Scope modern theme to pages that opt-in via body.nhit-modern
+.nhit-modern {
+	font-family: var(--font-sans);
+	/* Removed background and color to use CSS variables only */
+	text-rendering: optimizeLegibility;
+	-moz-osx-font-smoothing: grayscale;
+	-webkit-font-smoothing: antialiased;
+}
+
+// Global link and focus styles (WCAG friendly)
+.nhit-modern a {
+	color: var(--color-primary);
+	text-decoration: none;
+}
+.nhit-modern a:hover, .nhit-modern a:focus {
+	text-decoration: underline;
+}
+
+// Enhanced focus ring for all focusable elements
+.nhit-modern :where(a, button, [role="button"], input, select, textarea, summary, .btn):focus-visible {
+	outline: none;
+	box-shadow: var(--focus-ring);
+	border-radius: var(--radius-sm);
+}
+
+// Reduced motion support
+@media (prefers-reduced-motion: reduce) {
+	*, *::before, *::after { animation: none !important; transition: none !important; }
+}
+
+// Cards and surfaces
+.nhit-modern .surface {
+	background: var(--color-surface);
+	border: 1px solid var(--color-border);
+	border-radius: var(--radius-md);
+	box-shadow: var(--shadow-sm);
+}
+
+.nhit-modern .elevated { box-shadow: var(--shadow-md); }
+
+// Buttons override (works with Bootstrap classes)
+.nhit-modern .btn-primary {
+	--bs-btn-bg: var(--color-primary);
+	--bs-btn-border-color: var(--color-primary);
+	--bs-btn-hover-bg: #1d4ed8; // blue-700
+	--bs-btn-hover-border-color: #1d4ed8;
+	--bs-btn-color: var(--color-primary-contrast);
+}
+
+.nhit-modern .btn-outline-primary {
+	--bs-btn-color: var(--color-primary);
+	--bs-btn-border-color: var(--color-primary);
+	--bs-btn-hover-bg: var(--color-primary);
+	--bs-btn-hover-border-color: var(--color-primary);
+	--bs-btn-hover-color: var(--color-primary-contrast);
+}
+
+// Navbar modern look
+.nhit-modern .navbar {
+	background: var(--color-surface) !important;
+	border-bottom: 1px solid var(--color-border);
+}
+
+.nhit-modern .navbar-brand { font-weight: 700; letter-spacing: 0.2px; }
+
+.nhit-modern .nav-link { color: var(--color-text) !important; }
+.nhit-modern .nav-link:hover, .nhit-modern .nav-link:focus { color: var(--color-primary) !important; }
+
+// Skip link for keyboard users
+.skip-link {
+	position: absolute;
+	top: -1000px;
+	left: 0;
+	background: var(--color-primary);
+	color: var(--color-primary-contrast);
+	padding: 10px 14px;
+	border-radius: var(--radius-sm);
+	z-index: 10000;
+}
+
+.skip-link:focus { top: 10px; left: 10px; box-shadow: var(--focus-ring); }
+
+// Tables contrast and spacing
+.nhit-modern table { border-color: var(--color-border) !important; }
+.nhit-modern thead th { background: #f9fafb; }
+
+// Forms: spacing, readable labels, invalid states
+.nhit-modern label { font-weight: 600; margin-bottom: 6px; }
+.nhit-modern .form-text { color: var(--color-muted); }
+.nhit-modern .form-control, .nhit-modern .form-select, .nhit-modern .form-check-input {
+	border-color: var(--color-border);
+	background-color: var(--color-surface);
+	color: var(--color-text);
+}
+
+.nhit-modern .form-control:focus, .nhit-modern .form-select:focus, .nhit-modern .form-check-input:focus {
+	box-shadow: var(--focus-ring);
+}
+
+.nhit-modern .is-invalid, .nhit-modern .form-control.is-invalid, .nhit-modern .form-select.is-invalid {
+	border-color: #dc2626 !important; // red-600
+	background-image: none;
+}
+
+.nhit-modern .invalid-feedback { display: block; }
+
+// Alerts: light backgrounds with contrast
+.nhit-modern .alert-success { background: #d1fae5; color: #065f46; }
+.nhit-modern .alert-danger { background: #fee2e2; color: #7f1d1d; }
+.nhit-modern .alert-warning { background: #fef3c7; color: #78350f; }
+.nhit-modern .alert-info { background: #dbeafe; color: #1e3a8a; }
+
+// Tables: light theme only
+.nhit-modern .table { --bs-table-striped-bg: #f9fafb; }
+.nhit-modern .table > :not(caption) > * > * { border-color: var(--color-border); }
+
+// Badges / Pills
+.nhit-modern .badge { padding: 0.5em 0.65em; border-radius: var(--radius-sm); }
+
+// Force light theme for backend regardless of any theme settings
+.nhit-modern {
+	// Layout containers
+	.container, .container-fluid { max-width: 1440px; }
+
+	// Cards
+	.card, .surface-card {
+		background: var(--color-surface);
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-lg);
+		box-shadow: var(--shadow-sm);
+	}
+	.card-header { background: transparent; border-bottom: 1px solid var(--color-border); }
+	.card-footer { background: transparent; border-top: 1px solid var(--color-border); }
+
+	// Header (topbar) and sidebar
+	.header { background: var(--color-surface); border-bottom: 1px solid var(--color-border); }
+	.sidebar { background: var(--color-surface); border-right: 1px solid var(--color-border); }
+	.sidebar .nav-link { color: var(--color-text); border-radius: 10px; }
+	.sidebar .nav-link:hover,
+	.sidebar .nav-link.active { background: #dbeafe; color: var(--color-primary); }
+
+	// Breadcrumbs and page title
+	.breadcrumb { --bs-breadcrumb-divider-color: var(--color-muted); color: var(--color-muted); }
+	.breadcrumb a { color: var(--color-text); }
+	.pagetitle h1, h1.h3 { font-weight: 700; letter-spacing: 0.2px; }
+
+	// Tabs and filters as soft pills
+	.nav-tabs .nav-link, .nav-pills .nav-link, .dataTables_length .form-select {
+		border-radius: 999px; border-color: var(--color-border);
+	}
+	.nav-tabs .nav-link.active, .nav-pills .nav-link.active { background: var(--color-primary); color: var(--color-primary-contrast); }
+
+	// Tables modern look
+	.table { border-collapse: separate; border-spacing: 0; background: var(--color-surface); }
+	.table thead th { border-bottom: 1px solid var(--color-border) !important; color: var(--color-muted); font-weight: 600; }
+	.table tbody tr { background: var(--color-surface); }
+	.table tbody tr + tr td { border-top: 1px solid var(--color-border) !important; }
+	.table tbody tr:hover { background: #f9fafb; }
+
+	// DataTables search + length
+	.dataTables_filter input[type="search"], .form-control, .form-select {
+		border-radius: 12px; border-color: var(--color-border); background: var(--color-surface); color: var(--color-text);
+	}
+	.dataTables_filter input[type="search"]::placeholder { color: var(--color-muted); }
+
+	// Badges for statuses
+	.badge { border-radius: 999px; font-weight: 600; }
+	.badge.bg-success { background: #dcfce7; color: #16a34a; }
+	.badge.bg-danger { background: #fee2e2; color: #b91c1c; }
+	.badge.bg-warning { background: #fef3c7; color: #92400e; }
+	.badge.bg-info { background: #dbeafe; color: #1e40af; }
+
+	// Buttons light theme
+	.btn { border-radius: 10px; }
+	.btn-light { background: #f9fafb; border-color: var(--color-border); color: var(--color-text); }
+	.btn-outline-secondary { color: var(--color-muted); border-color: var(--color-border); }
+
+	// Pagination light theme
+	.pagination .page-link { border-radius: 8px; border-color: var(--color-border); background: var(--color-surface); color: var(--color-text); }
+	.pagination .page-item.active .page-link { background: var(--color-primary); border-color: var(--color-primary); color: var(--color-primary-contrast); }
+
+	// Shadows on content wrappers used by NiceAdmin
+	.main .card, .main .datatable, .main section > .card { box-shadow: var(--shadow-sm); }
+}
+
+// Bootstrap
+@import 'bootstrap/scss/bootstrap';

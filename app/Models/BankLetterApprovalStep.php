@@ -1,0 +1,19 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+
+class BankLetterApprovalStep extends Model
+{
+    protected $fillable = ['min_amount', 'max_amount'];
+
+    public function approvers()
+    {
+        return $this->hasMany(BankLetterApprovalPriority::class, 'approval_step_id');
+    }
+    public function reviewers()
+    {
+        return $this->belongsToMany(User::class, 'payment_note_approval_priorities', 'approval_step_id', 'reviewer_id');
+    }
+}

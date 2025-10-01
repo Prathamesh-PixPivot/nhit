@@ -1,0 +1,302 @@
+<style>
+    .table-container {
+        width: 100%;
+        margin: 20px auto;
+        border-radius: 10px;
+        overflow: auto;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        background-color: #fff;
+    }
+
+    .table-header {
+        display: flex;
+        align-items: center;
+        padding: 10px;
+        background-color: #f5f5f5;
+        border-bottom: 1px solid #ddd;
+    }
+
+    .search-wrapper {
+        flex: 1;
+        display: flex;
+        align-items: center;
+    }
+
+    .search-wrapper input {
+        padding: 5px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        font-size: 16px;
+        margin-right: 10px;
+    }
+
+    .view-options {
+        display: flex;
+        align-items: center;
+    }
+
+    .view-options label {
+        margin-right: 10px;
+        font-size: 16px;
+    }
+
+    .view-options select {
+        padding: 5px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        font-size: 16px;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    th,
+    td {
+        padding: 12px;
+        text-align: left;
+        border-bottom: 1px solid #ddd;
+    }
+
+    th {
+        background-color: #f0f0f0;
+        cursor: pointer;
+        position: relative;
+    }
+
+    th i {
+        margin-left: 5px;
+    }
+
+    td {
+        max-width: 300px;
+        /* Increased maximum width for better visibility of long addresses */
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    td img {
+        width: 50px;
+        /* Square width */
+        height: 50px;
+        /* Square height */
+        border-radius: 5px;
+        /* Square corners */
+        display: block;
+        margin: 0 auto;
+        /* Centering the image */
+    }
+</style>
+@if (!empty($cartItems))
+    <div class="table-container">
+        {{-- <div class="table-header">
+        <div class="search-wrapper">
+            <input type="text" id="search-input" placeholder="Search...">
+            <i class="fas fa-search"></i>
+        </div>
+        <div class="view-options">
+            <label for="rows-select">Show rows:</label>
+            <select id="rows-select">
+                <option value="10">10</option>
+                <option value="20">20</option>
+                <option value="50">50</option>
+            </select>
+        </div>
+    </div> --}}
+        <table id="employee-table" class="table-responsive-full sort-table">
+            <thead>
+                <tr>
+                    <th>Template Type</th>
+                    <th>Project</th>
+                    <th>From Account</th>
+                    {{-- <th>From Account Type<i class="fas fa-sort"></i></th> --}}
+                    <th>Account Number</th>
+                    {{-- <th>To Account Type</th> --}}
+                    <th>Beneficiary Name</th>
+                    {{-- <th>Beneficiary name Name</th> --}}
+                    <th>Account Number</th>
+                    <th>Name Of Bank</th>
+                    <th>IFSC</th>
+                    <th>Amount</th>
+                    <th>Purpose</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody id="table-body">
+                @php
+                    // $paymentsShortcut = \App\Models\PaymentsShortcut::where('id', 1)->first();
+                    $paymentsShortcut = null;
+                @endphp
+                @if (!is_null($paymentsShortcut))
+                    @php $cartItems = array_merge($cartItems, $paymentsShortcut->request_data);@endphp
+                @endif
+                {{-- {{dd($cartItems)}}; --}}
+
+
+                @for ($i = 0; $i < count($cartItems); $i++)
+                    {{-- {{dd($cartItems)}} --}}
+                    <!-- Employee data will be inserted here -->
+
+                    {{-- <fieldset class="scheduler-border"> 
+                      <div class="list-group-item justify-content-between align-items-center"> --}}
+                    {{-- <tr>
+                    <td colspan="12">
+                        <legend class="scheduler-border">Request Details : #{{$i+1}}</legend>
+                        <div class="border p-3 d-flex justify-content-end">
+                            <span class="badge badge-primary badge-pill delete-item" data-index="{{$i}}">X</span></li>
+                        </div>
+                    </td>
+                     </tr> --}}
+                    <tr>
+                        <td>
+                            <div class="col-md-12 p-1">
+
+                                <?php
+                                if ($cartItems[$i]['template_type'] == 'any-bank-internal-external-bulk') {
+                                    echo 'Any Bulk';
+                                }
+                                
+                                if ($cartItems[$i]['template_type'] == 'sbi-sbi-internal-external-bulk') {
+                                    echo 'SBI Bulk';
+                                }
+                                
+                                if ($cartItems[$i]['template_type'] == 'anybank-onetomany-external-bulk') {
+                                    echo 'One To Many Bulk';
+                                }
+                                
+                                if ($cartItems[$i]['template_type'] == 'anybank-internalexternal-single') {
+                                    echo 'Any Single';
+                                }
+                                ?>
+                                <input type="hidden" name="vendor[{{ $i }}][template_type]"
+                                    class="template_type @error('template_type') is-invalid @enderror" id="template_type"
+                                    value="{{ $cartItems[$i]['template_type'] ?? '' }}">
+
+                            </div>
+                        </td>
+                        <td>
+                            <div class="col-md-12 p-1">
+
+                                <input name="vendor[{{ $i }}][project]"
+                                    class="project @error('project') is-invalid @enderror" id="project"
+                                    value="{{ $cartItems[$i]['project'] ?? '' }}" readonly>
+
+                            </div>
+                        </td>
+                        <td>
+                            <div class="col-md-12 p-1">
+
+                                <input id="account_full_name"
+                                    class="account_full_name @error('account_full_name') is-invalid @enderror"
+                                    name="vendor[{{ $i }}][account_full_name]"
+                                    value="{{ $cartItems[$i]['account_full_name'] ?? '' }}" data-index="0" readonly>
+
+                            </div>
+                        </td>
+                        {{-- <td>
+                            <div class="col-md-6 p-1">
+                                
+                                    <input type="text" class="@error('from_account_type') is-invalid @enderror"
+                                        id="from_account_type"
+                                        value="{{ $cartItems[$i]['from_account_type'] ?? '' }}"
+                                        name="vendor[{{ $i }}][from_account_type]" data-index="0" readonly>
+                                
+                            </div>
+                        </td> --}}
+                        <td>
+                            <div class="col-md-12 p-1">
+                                <input type="text" class="@error('full_account_number') is-invalid @enderror"
+                                    id="full_account_number" value="{{ $cartItems[$i]['full_account_number'] ?? '' }}"
+                                    name="vendor[{{ $i }}][full_account_number]" data-index="0" readonly>
+                            </div>
+                        </td>
+                        {{-- <td>
+                            <div class="col-md-6 p-2 p-10 left-align">
+                                <div class="col-md-12">
+                                    <input type="text" class="@error('to') is-invalid @enderror" id="to"
+                                        value="{{ $cartItems[$i]['to'] ?? '' }}"
+                                        name="vendor[{{ $i }}][to]" data-index="0" readonly>
+                                </div>
+                            </div>
+                        </td> --}}
+
+                        <td>
+                            <div class="col-md-12 p-1">
+
+                                <input type="text" class="@error('benificiary_name') is-invalid @enderror"
+                                    id="benificiary_name" value="{{ $cartItems[$i]['benificiary_name'] ?? '' }}"
+                                    name="vendor[{{ $i }}][benificiary_name]" readonly>
+
+                            </div>
+                        </td>
+                        {{-- <td>
+                            <div class="col-md-12 p-1">
+                                <div class="col-md-12">
+                                    <input type="text" class="@error('to_account_type') is-invalid @enderror"
+                                        id="to_account_type" value="{{ $cartItems[$i]['to_account_type'] ?? '' }}"
+                                        name="vendor[{{ $i }}][to_account_type]" readonly>
+                                </div>
+                            </div>
+                        </td> --}}
+                        <td>
+                            <div class="col-md-12 p-1">
+
+                                <input type="text" class="@error('account_number') is-invalid @enderror"
+                                    id="account_number" value="{{ $cartItems[$i]['account_number'] ?? '' }}"
+                                    name="vendor[{{ $i }}][account_number]" readonly>
+
+                            </div>
+                        </td>
+                        <td>
+                            <div class="col-md-12 p-1">
+
+                                <input type="text" class="@error('name_of_bank') is-invalid @enderror"
+                                    id="name_of_bank" value="{{ $cartItems[$i]['name_of_bank'] ?? '' }}"
+                                    name="vendor[{{ $i }}][name_of_bank]" readonly>
+
+                            </div>
+                        </td>
+                        <td>
+                            <div class="col-md-12 p-1">
+
+                                <input type="text" class="@error('ifsc_code') is-invalid @enderror" id="ifsc_code"
+                                    value="{{ $cartItems[$i]['ifsc_code'] ?? '' }}"
+                                    name="vendor[{{ $i }}][ifsc_code]" readonly>
+
+                            </div>
+                        </td>
+                        <td>
+                            <div class="col-md-12 p-1">
+
+                                <input type="number" class="@error('amount') is-invalid @enderror" id="amount"
+                                    value="{{ $cartItems[$i]['amount'] ?? '' }}"
+                                    name="vendor[{{ $i }}][amount]" readonly>
+
+                            </div>
+                        </td>
+                        <td>
+                            <div class="col-md-12 p-1">
+
+                                <textarea name="vendor[{{ $i }}][purpose]" id="" class="@error('purpose') is-invalid @enderror"
+                                    id="purpose" readonly>{{ $cartItems[$i]['purpose'] ?? '' }}</textarea>
+
+                            </div>
+                        </td>
+                        <td class="delete-item-row">
+                            <div class="col-md-12 p-1">
+
+                                <span class="badge badge-primary badge-pill delete-item"
+                                    data-index="{{ base64_encode($i) }}">X</span>
+
+                            </div>
+                        </td>
+                    </tr>
+                    {{--  </div>
+         </fieldset> --}}
+                @endfor
+            </tbody>
+        </table>
+    </div>
+@endif

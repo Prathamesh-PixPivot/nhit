@@ -1,0 +1,10 @@
+@import "tailwindcss";
+
+/* Scoped Tailwind onto backend selectors without changing markup */
+.nhit-modern .header { /* bg + border */ }
+.nhit-modern .sidebar { /* bg + border */ }
+.nhit-modern .sidebar .nav-link { /* rounded + color */ }
+.nhit-modern #main { /* container spacing */ }
+
+/* See app.scss for CSS variables; Tailwind utilities will complement them */
+
