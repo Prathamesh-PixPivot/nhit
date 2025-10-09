@@ -213,9 +213,47 @@ class PaymentNoteController extends Controller
     /**
      * Show the form for creating a new resource.
      */
-    public function create()
+    public function create(Request $request)
     {
-        return view('backend.paymentNote.create');
+        $greenNoteId = $request->get('green_note_id');
+        $greenNote = null;
+
+        if ($greenNoteId) {
+            $greenNote = GreenNote::with(['supplier', 'department'])->find($greenNoteId);
+        }
+
+        // Generate payment note order number
+        $orderNumber = $this->generatePaymentNoteOrderNumber();
+
+        return view('backend.paymentNote.create', compact('greenNote', 'orderNumber'));
+    }
+
+    /**
+     * Generate payment note order number
+     */
+    private function generatePaymentNoteOrderNumber()
+    {
+        $currentMonth = date('n');
+        $currentYear = date('Y');
+        $previousYear = $currentYear - 1;
+
+        if ($currentMonth >= 4) {
+            $financialStartYear = $currentYear;
+            $financialEndYear = $currentYear + 1;
+        } else {
+            $financialStartYear = $previousYear;
+            $financialEndYear = $currentYear;
+        }
+
+        $shortStartYear = substr($financialStartYear, -2);
+        $shortEndYear = substr($financialEndYear, -2);
+
+        // Get the last payment note ID for sequence
+        $lastNote = PaymentNote::orderBy('id', 'desc')->first();
+        $nextId = $lastNote ? $lastNote->id + 1 : 1;
+        $formattedId = str_pad($nextId, 4, '0', STR_PAD_LEFT);
+
+        return config('app.note_icon', 'W') . "/{$shortStartYear}-{$shortEndYear}/PN/{$formattedId}";
     }
 
     /**
@@ -591,7 +629,8 @@ class PaymentNoteController extends Controller
     }
     public function rule()
     {
-        $users = User::role('PN Approver')->where('active', 'Y')->get();
+        $users = \App\Services\RoleService::getUsersWithRoles(['PN Approver', 'approver', 'reviewer'])
+            ->where('active', 'Y');
         // $approvalSteps = PaymentNoteApprovalStep::with('reviewers')->get();
         $approvalSteps = PaymentNoteApprovalStep::with('approvers.user')->get();
         return view('backend.paymentNote.rule.create', compact('approvalSteps', 'users'));
@@ -719,5 +758,186 @@ class PaymentNoteController extends Controller
         }
 
         return response()->json(['success' => true]);
+    }
+
+    /**
+     * Show draft payment notes
+     */
+    public function drafts()
+    {
+        $authId = Auth::id();
+        
+        $query = PaymentNote::where('is_draft', true)
+            ->with(['greenNote', 'reimbursementNote', 'user', 'createdBy']);
+
+        // Apply role-based filtering
+        if ($authId !== 1 && !auth()->user()->can('all-payment-note')) {
+            $query->where(function ($q) use ($authId) {
+                $q->where('user_id', $authId)
+                  ->orWhere('created_by', $authId);
+            });
+        }
+
+        $drafts = $query->orderBy('created_at', 'desc')->get();
+
+        return view('backend.payment-note.drafts', compact('drafts'));
+    }
+
+    /**
+     * Convert draft to active payment note
+     */
+    public function convertDraftToActive(PaymentNote $paymentNote)
+    {
+        if (!$paymentNote->isDraft()) {
+            return back()->withErrors(['error' => 'Payment note is not in draft status.']);
+        }
+
+        try {
+            $paymentNoteService = new \App\Services\PaymentNoteService();
+            $paymentNoteService->convertDraftToActive($paymentNote, auth()->user());
+
+            return redirect()
+                ->route('backend.payment-note.show', $paymentNote)
+                ->with('success', 'Draft payment note converted to active successfully.');
+
+        } catch (\Exception $e) {
+            return back()->withErrors(['error' => 'Failed to convert draft: ' . $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Delete draft payment note
+     */
+    public function deleteDraft(PaymentNote $paymentNote)
+    {
+        if (!$paymentNote->isDraft()) {
+            return back()->withErrors(['error' => 'Only draft payment notes can be deleted.']);
+        }
+
+        // Check permissions
+        if (!auth()->user()->can('delete-payment-note') && 
+            $paymentNote->created_by !== auth()->id() && 
+            $paymentNote->user_id !== auth()->id()) {
+            return back()->withErrors(['error' => 'You do not have permission to delete this draft.']);
+        }
+
+        try {
+            $paymentNote->delete();
+
+            return redirect()
+                ->route('backend.payment-note.drafts')
+                ->with('success', 'Draft payment note deleted successfully.');
+
+        } catch (\Exception $e) {
+            return back()->withErrors(['error' => 'Failed to delete draft: ' . $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Put payment note on hold
+     */
+    public function putOnHold(Request $request, PaymentNote $paymentNote)
+    {
+        $request->validate([
+            'hold_reason' => 'required|string|max:1000',
+        ]);
+
+        try {
+            $paymentNoteService = new \App\Services\PaymentNoteService();
+            $paymentNoteService->putOnHold($paymentNote, $request->hold_reason, auth()->user());
+
+            return back()->with('success', 'Payment note put on hold successfully.');
+
+        } catch (\Exception $e) {
+            return back()->withErrors(['error' => 'Failed to put note on hold: ' . $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Remove payment note from hold
+     */
+    public function removeFromHold(Request $request, PaymentNote $paymentNote)
+    {
+        $request->validate([
+            'new_status' => 'required|in:P,D,S',
+        ]);
+
+        try {
+            $paymentNoteService = new \App\Services\PaymentNoteService();
+            $paymentNoteService->removeFromHold($paymentNote, auth()->user(), $request->new_status);
+
+            return back()->with('success', 'Payment note removed from hold successfully.');
+
+        } catch (\Exception $e) {
+            return back()->withErrors(['error' => 'Failed to remove note from hold: ' . $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Show payment note creation form for superadmin
+     */
+    public function createForSuperAdmin()
+    {
+        // Only allow superadmin to access this
+        if (!auth()->user()->hasRole('Super Admin')) {
+            abort(403, 'Unauthorized access.');
+        }
+
+        $greenNotes = GreenNote::where('status', 'A')
+            ->whereDoesntHave('paymentNotes', function ($query) {
+                $query->where('is_draft', false);
+            })
+            ->with(['supplier', 'department'])
+            ->get();
+
+        return view('backend.payment-note.create-superadmin', compact('greenNotes'));
+    }
+
+    /**
+     * Store payment note created by superadmin
+     */
+    public function storeForSuperAdmin(Request $request)
+    {
+        // Only allow superadmin to access this
+        if (!auth()->user()->hasRole('Super Admin')) {
+            abort(403, 'Unauthorized access.');
+        }
+
+        $request->validate([
+            'green_note_id' => 'required|exists:green_notes,id',
+            'subject' => 'required|string|max:1000',
+            'recommendation_of_payment' => 'required|string|max:1000',
+            'is_draft' => 'boolean',
+        ]);
+
+        try {
+            $greenNote = GreenNote::findOrFail($request->green_note_id);
+            
+            if ($request->is_draft) {
+                $paymentNoteService = new \App\Services\PaymentNoteService();
+                $paymentNote = $paymentNoteService->createDraftOnApproval($greenNote, auth()->user());
+            } else {
+                $paymentNote = PaymentNote::create([
+                    'green_note_id' => $request->green_note_id,
+                    'user_id' => auth()->id(),
+                    'created_by' => auth()->id(),
+                    'note_no' => PaymentNote::generateOrderNumber(),
+                    'subject' => $request->subject,
+                    'recommendation_of_payment' => $request->recommendation_of_payment,
+                    'status' => 'P',
+                    'is_draft' => false,
+                    'auto_created' => false,
+                ]);
+            }
+
+            return redirect()
+                ->route('backend.payment-note.show', $paymentNote)
+                ->with('success', 'Payment note created successfully.');
+
+        } catch (\Exception $e) {
+            return back()
+                ->withInput()
+                ->withErrors(['error' => 'Failed to create payment note: ' . $e->getMessage()]);
+        }
     }
 }

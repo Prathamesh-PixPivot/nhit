@@ -3,118 +3,102 @@
 @section('title', 'Payment Notes Management')
 
 @section('content')
-    <!-- Welcome Header -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <h2 class="fw-bold text-success mb-1">
-                        <i class="bi bi-receipt me-2"></i>Payment Notes Management
-                    </h2>
-                    <p class="text-muted mb-0">Track and manage payment note requests and approvals</p>
-                </div>
-                <div class="d-flex gap-2">
-                    @can('create-payment-note')
-                        <a href="{{ route('backend.payment-note.create') }}" class="btn btn-success">
-                            <i class="bi bi-plus-circle me-1"></i>Create Payment Note
-                        </a>
-                    @endcan
-                </div>
+<div class="modern-container">
+    <!-- Modern Header -->
+    <div class="modern-header">
+        <div class="d-flex justify-content-between align-items-start">
+            <div>
+                <h1 class="modern-page-title">
+                    <i class="bi bi-credit-card text-primary me-3"></i>Payment Notes
+                </h1>
+                <p class="modern-page-subtitle">Track and manage payment note requests and approvals</p>
+            </div>
+            <div class="d-flex gap-3">
+                @can('create-payment-note')
+                    <a href="{{ route('backend.payment-note.create') }}" class="btn btn-primary">
+                        <i class="bi bi-plus-circle me-1"></i>Create Payment Note
+                    </a>
+                @endcan
             </div>
         </div>
     </div>
 
-    <!-- Breadcrumb -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <nav aria-label="breadcrumb">
-                <ol class="breadcrumb">
-                    <li class="breadcrumb-item">
-                        <a href="{{ route('backend.dashboard.index') }}">
-                            <i class="bi bi-house-door me-1"></i>Dashboard
-                        </a>
-                    </li>
-                    <li class="breadcrumb-item active" aria-current="page">Payment Notes</li>
-                </ol>
-            </nav>
-        </div>
+    <!-- Modern Breadcrumb -->
+    <div class="modern-breadcrumb">
+        <a href="{{ route('backend.dashboard.index') }}">
+            <i class="bi bi-house-door me-1"></i>Dashboard
+        </a>
+        <span class="modern-breadcrumb-separator">/</span>
+        <span>Payment Notes</span>
     </div>
 
-    <!-- Status Tabs -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card border-0 shadow-sm">
-                <div class="card-body p-3">
-                    <ul class="nav nav-tabs" id="paymentNoteTabs" role="tablist">
-                        <li class="nav-item" role="presentation">
-                            <a class="nav-link {{ request('status') === 'all' ? 'active' : '' }}"
-                               href="{{ route('backend.payment-note.index', ['status' => 'all']) }}" role="tab">
-                                <i class="bi bi-list-ul me-1"></i>All
-                            </a>
-                        </li>
-                        <li class="nav-item" role="presentation">
-                            <a class="nav-link {{ request('status') === null || request('status') === 'S' ? 'active' : '' }}"
-                               href="{{ route('backend.payment-note.index', ['status' => 'S']) }}" role="tab">
-                                <i class="bi bi-clock me-1"></i>Pending
-                            </a>
-                        </li>
-                        <li class="nav-item" role="presentation">
-                            <a class="nav-link {{ request('status') === 'A' ? 'active' : '' }}"
-                               href="{{ route('backend.payment-note.index', ['status' => 'A']) }}" role="tab">
-                                <i class="bi bi-check-circle me-1"></i>Approved
-                            </a>
-                        </li>
-                        <li class="nav-item" role="presentation">
-                            <a class="nav-link {{ request('status') === 'R' ? 'active' : '' }}"
-                               href="{{ route('backend.payment-note.index', ['status' => 'R']) }}" role="tab">
-                                <i class="bi bi-x-circle me-1"></i>Rejected
-                            </a>
-                        </li>
-                        <li class="nav-item" role="presentation">
-                            <a class="nav-link {{ request('status') === 'D' ? 'active' : '' }}"
-                               href="{{ route('backend.payment-note.index', ['status' => 'D']) }}" role="tab">
-                                <i class="bi bi-file-earmark me-1"></i>Draft
-                            </a>
-                        </li>
-                    </ul>
-                </div>
-            </div>
-        </div>
+    <!-- Modern Status Tabs -->
+    <div class="modern-tabs">
+        <a href="{{ route('backend.payment-note.index', ['status' => 'all']) }}" 
+           class="modern-tab {{ request('status') === 'all' ? 'active' : '' }}">
+            <i class="bi bi-list-ul me-2"></i>All Notes
+        </a>
+        <a href="{{ route('backend.payment-note.index', ['status' => 'S']) }}" 
+           class="modern-tab {{ request('status') === null || request('status') === 'S' ? 'active' : '' }}">
+            <i class="bi bi-clock me-2"></i>Pending
+        </a>
+        <a href="{{ route('backend.payment-note.index', ['status' => 'A']) }}" 
+           class="modern-tab {{ request('status') === 'A' ? 'active' : '' }}">
+            <i class="bi bi-check-circle me-2"></i>Approved
+        </a>
+        <a href="{{ route('backend.payment-note.index', ['status' => 'R']) }}" 
+           class="modern-tab {{ request('status') === 'R' ? 'active' : '' }}">
+            <i class="bi bi-x-circle me-2"></i>Rejected
+        </a>
+        <a href="{{ route('backend.payment-note.index', ['status' => 'D']) }}" 
+           class="modern-tab {{ request('status') === 'D' ? 'active' : '' }}">
+            <i class="bi bi-file-earmark me-2"></i>Draft
+        </a>
     </div>
 
-    <div class="row">
-        <div class="col-12">
-            <div class="card border-0 shadow-sm">
-                <div class="card-header bg-white border-0 py-3">
-                    <h5 class="card-title mb-0">
-                        <i class="bi bi-table text-success me-2"></i>Payment Note Requests
+    <div class="modern-content">
+        <!-- Modern Data Table Card -->
+        <div class="modern-card">
+            <div class="modern-card-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h3 class="mb-1 text-gray-900">
+                            <i class="bi bi-table text-primary me-2"></i>Payment Notes
+                        </h3>
                         @if(request('status'))
-                            <span class="badge bg-primary ms-2">{{ ucfirst(request('status')) }}</span>
+                            <span class="modern-badge modern-badge-info">
+                                {{ ucfirst(request('status')) }} Status
+                            </span>
                         @endif
-                    </h5>
-                </div>
-                <div class="card-body p-4">
-                    <!-- Payment Notes DataTable -->
-                    <div class="table-responsive">
-                        <table class="table table-hover datatable" id="payment_notes_index_dt" style="width: 100%;">
-                            <thead class="table-light">
-                                <tr>
-                                    <th width="5%">#</th>
-                                    <th width="20%">Project Name</th>
-                                    <th width="20%">Vendor/Employee</th>
-                                    <th width="15%">Amount</th>
-                                    <th width="15%">Date</th>
-                                    <th width="15%">Status</th>
-                                    <th width="10%">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody></tbody>
-                        </table>
+                    </div>
+                    <div class="modern-search">
+                        <i class="bi bi-search modern-search-icon"></i>
+                        <input type="text" class="modern-input modern-search-input" placeholder="Search notes...">
                     </div>
                 </div>
             </div>
+            <div class="modern-card-body p-0">
+                <!-- Modern DataTable -->
+                <div class="table-responsive">
+                    <table class="modern-table datatable" id="payment_notes_index_dt" style="width: 100%;">
+                        <thead>
+                            <tr>
+                                <th width="5%">#</th>
+                                <th width="20%">Project</th>
+                                <th width="20%">Vendor/Employee</th>
+                                <th width="15%">Amount</th>
+                                <th width="15%">Date</th>
+                                <th width="15%">Status</th>
+                                <th width="10%">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
         </div>
-    </div>
+    </div> <!-- Close modern-content -->
+</div> <!-- Close modern-container -->
 
     <!-- Update UTR and Date Modal -->
     <div class="modal fade" id="updateModal" tabindex="-1" role="dialog" aria-labelledby="updateModalLabel" aria-hidden="true">
@@ -333,14 +317,38 @@
                     {
                         data: 'vendor_name',
                         name: 'vendor_name',
-                        width: '20%'
+                        width: '20%',
+                        render: function(data, type, row) {
+                            if (!data || data === '-' || data === 'null' || data === '' || data === 'N/A') {
+                                return '<span class="text-muted">N/A</span>';
+                            }
+                            return '<strong>' + data + '</strong>';
+                        }
                     },
                     {
                         data: 'amount',
                         name: 'amount',
                         width: '15%',
                         render: function(data, type, row) {
-                            return '₹' + parseFloat(data || 0).toLocaleString('en-IN');
+                            // Handle various data formats
+                            let amount = 0;
+                            
+                            if (data !== null && data !== undefined && data !== '' && data !== 'null') {
+                                // Remove any currency symbols and commas
+                                let cleanData = String(data).replace(/[₹,]/g, '').trim();
+                                amount = parseFloat(cleanData);
+                            }
+                            
+                            // Check if amount is valid
+                            if (isNaN(amount) || amount === 0) {
+                                return '<span class="text-muted">₹0.00</span>';
+                            }
+                            
+                            // Format with Indian number system
+                            return '<strong class="text-success">₹' + amount.toLocaleString('en-IN', {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2
+                            }) + '</strong>';
                         }
                     },
                     {

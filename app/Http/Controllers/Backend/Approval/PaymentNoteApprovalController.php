@@ -65,7 +65,7 @@ class PaymentNoteApprovalController extends Controller
      */
     public function show(string $id)
     {
-        $users = User::role('PN Approver')->get();
+        $users = \App\Services\RoleService::getUsersWithRoles(['PN Approver', 'approver', 'reviewer']);
 
         $step = PaymentNoteApprovalStep::with('approvers.user')->findOrFail($id);
 
@@ -78,7 +78,7 @@ class PaymentNoteApprovalController extends Controller
     public function edit(string $id)
     {
         // $step = PaymentNoteApprovalStep::with('reviewers')->findOrFail($id);
-        $users = User::role('PN Approver')->get();
+        $users = \App\Services\RoleService::getUsersWithRoles(['PN Approver', 'approver', 'reviewer']);
 
         $step = PaymentNoteApprovalStep::with('approvers.user')->findOrFail($id);
 

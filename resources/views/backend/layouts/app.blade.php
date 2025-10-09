@@ -13,17 +13,12 @@
     <meta content="" name="description">
     <meta content="" name="keywords">
     <link rel="dns-prefetch" href="//fonts.bunny.net">
-    <link href="https://fonts.bunny.net/css?family=Nunito" rel="stylesheet">
+    <!-- Modern Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
     <!-- Favicons -->
     <link href="{{ asset('theme/assets/img/favicon.png') }}" rel="icon">
-    <link
-        href="{{ asset('theme/assets/img/apple-touch-icon.png" rel="apple-touch-icon">
-                                                                                                                                                                                        
-                                                                                                                                                                                          <!-- Google Fonts --><link href="https://fonts.gstatic.com') }}"
-        rel="preconnect">
-    <link
-        href="https://fonts.googleapis.com/css?family=Open+Sans:300,300i,400,400i,600,600i,700,700i|Nunito:300,300i,400,400i,600,600i,700,700i|Poppins:300,300i,400,400i,500,500i,600,600i,700,700i"
-        rel="stylesheet">
+    <link href="{{ asset('theme/assets/img/apple-touch-icon.png') }}" rel="apple-touch-icon">
 
     <!-- Vendor CSS Files -->
     {{-- <link href="{{ asset('theme/assets/vendor/bootstrap/css/bootstrap.min.css') }}" rel="stylesheet"> --}}
@@ -45,6 +40,9 @@
     {{-- <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jquery-validate/1.19.1/jquery.validate.min.js"> --}}
     <link href="{{ asset('theme/assets/css/fSelect.css') }}" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    
+    <!-- Global Page Loader Styles -->
+    <link href="{{ asset('css/global-loader.css') }}" rel="stylesheet">
 
     <!-- ✅ Latest jQuery -->
     <script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-..." crossorigin="anonymous"></script>
@@ -55,6 +53,10 @@
 
     <!-- Template Main CSS File -->
     <link href="{{ asset('theme/assets/css/style.css') }}" rel="stylesheet">
+    
+    <!-- Modern Design System -->
+    <link href="{{ asset('css/modern-design-system.css') }}" rel="stylesheet">
+    
     @vite(['resources/sass/app.scss', 'resources/css/tw.css', 'resources/js/app.js'])
     {!! Toastr::message() !!}
     <!-- =======================================================
@@ -375,6 +377,11 @@
             @include('backend.layouts.include.message')
             @yield('content')
         </main><!-- End #main -->
+        
+        <!-- Include Feature Guide and Quick Actions -->
+        @include('backend.partials.feature-guide')
+        @include('backend.partials.quick-actions')
+        
         <!-- ======= Sidebar ======= -->
         @include('backend.layouts.include.footer')
         <!-- End Sidebar-->
@@ -627,6 +634,13 @@
             });
         });
     </script>
+    
+    <!-- Global Page Loader JavaScript -->
+    <script src="{{ asset('js/global-page-loader.js') }}"></script>
+    
+    <!-- Organization Switcher JavaScript -->
+    <script src="{{ asset('js/organization-switcher.js') }}"></script>
+    
     @stack('script')
 
 </body>

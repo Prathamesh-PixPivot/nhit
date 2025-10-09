@@ -91,6 +91,42 @@
               </li><!-- End Payment Notes Nav -->
           @endcanany
 
+          <!-- Bank Letter Management -->
+          @canany(['view-payment-note'])
+              <li class="nav-item">
+                  <a class="nav-link {{ request()->routeIs('backend.bank-letter.*') ? 'active' : 'collapsed' }}"
+                      data-bs-target="#bank-letter-nav" data-bs-toggle="collapse" href="#">
+                      <i class="bi bi-bank"></i>
+                      <span>Bank Letters</span>
+                      <i class="bi bi-chevron-down ms-auto"></i>
+                  </a>
+                  <ul id="bank-letter-nav"
+                      class="nav-content collapse {{ request()->routeIs('backend.bank-letter.*') ? 'show' : '' }}"
+                      data-bs-parent="#sidebar-nav">
+                      <li>
+                          <a href="{{ route('backend.bank-letter.index') }}"
+                              class="nav-link {{ request()->routeIs('backend.bank-letter.index') ? 'active' : '' }}">
+                              <i class="bi bi-list-ul"></i><span>All Bank Letters</span>
+                          </a>
+                      </li>
+                      <li>
+                          <a href="{{ route('backend.bank-letter.create') }}"
+                              class="nav-link {{ request()->routeIs('backend.bank-letter.create') ? 'active' : '' }}">
+                              <i class="bi bi-plus-circle"></i><span>Create Bank Letter</span>
+                          </a>
+                      </li>
+                      @can(['payment-note-view-rule'])
+                          <li>
+                              <a href="{{ route('backend.bank-letter.index') }}"
+                                  class="nav-link {{ request()->routeIs('backend.bank-letter.show') || request()->routeIs('backend.bank-letter.edit') ? 'active' : '' }}">
+                                  <i class="bi bi-gear"></i><span>Manage Approvals</span>
+                              </a>
+                          </li>
+                      @endcan
+                  </ul>
+              </li><!-- End Bank Letter Nav -->
+          @endcanany
+
           @canany(['view-reimbursement-note'])
               <li class="nav-item">
                   <a class="nav-link {{ request()->routeIs('backend.reimbursement-note.*') ? 'active' : 'collapsed' }}"
@@ -277,6 +313,34 @@
                   </ul>
               </li><!-- End Vendors Nav -->
           @endcanany
+
+          <!-- Organization Management Section (SuperAdmin Only) -->
+          @role('superadmin')
+              <li class="nav-item">
+                  <a class="nav-link {{ request()->routeIs('backend.organizations.*') ? 'active' : 'collapsed' }}"
+                      data-bs-target="#organizations-nav" data-bs-toggle="collapse" href="#">
+                      <i class="bi bi-buildings"></i>
+                      <span>Organization Management</span>
+                      <i class="bi bi-chevron-down ms-auto"></i>
+                  </a>
+                  <ul id="organizations-nav"
+                      class="nav-content collapse {{ request()->routeIs('backend.organizations.*') ? 'show' : '' }}"
+                      data-bs-parent="#sidebar-nav">
+                      <li>
+                          <a href="{{ route('backend.organizations.index') }}"
+                              class="nav-link {{ request()->routeIs('backend.organizations.index') ? 'active' : '' }}">
+                              <i class="bi bi-list-ul"></i><span>All Organizations</span>
+                          </a>
+                      </li>
+                      <li>
+                          <a href="{{ route('backend.organizations.create') }}"
+                              class="nav-link {{ request()->routeIs('backend.organizations.create') ? 'active' : '' }}">
+                              <i class="bi bi-plus-circle"></i><span>Create Organization</span>
+                          </a>
+                      </li>
+                  </ul>
+              </li><!-- End Organizations Nav -->
+          @endrole
 
           <!-- Activity & Reports Section -->
           <li class="nav-section-title mt-3 mb-2 px-3">

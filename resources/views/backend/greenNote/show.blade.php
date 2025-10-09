@@ -1,52 +1,108 @@
 @extends('backend.layouts.app')
 
-@section('title', 'Green Note Details - ' . $note->formatted_order_no)
+@section('title', 'Expense Note Details')
+
+@push('styles')
+<link href="{{ asset('css/modern-design-system.css') }}" rel="stylesheet">
+@endpush
 
 @section('content')
-    <!-- Welcome Header -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <h2 class="fw-bold text-primary mb-1">
-                        <i class="bi bi-file-earmark-text me-2"></i>Green Note Details
-                    </h2>
-                    <p class="text-muted mb-0">View and manage green note information and approvals</p>
-                </div>
-                <div class="d-flex gap-2">
-                    <a href="{{ route('backend.note.download', ['id' => $note->id]) }}" class="btn btn-primary">
-                        <i class="bi bi-download me-1"></i>Download PDF
+<div class="modern-container">
+    <!-- Modern Header -->
+    <div class="modern-header">
+        <div class="d-flex justify-content-between align-items-start">
+            <div>
+                <h1 class="modern-page-title">
+                    <i class="bi bi-receipt text-primary me-3"></i>Expense Note #{{ $note->formatted_order_no }}
+                </h1>
+                <p class="modern-page-subtitle">View and manage expense note details and approvals</p>
+            </div>
+            <div class="modern-action-group flex-wrap">
+                <a href="{{ route('backend.note.download', ['id' => $note->id]) }}" class="btn-modern btn-modern-primary">
+                    <i class="bi bi-download"></i>Download PDF
+                </a>
+                
+                <!-- Multiple Invoices Button -->
+                <a href="{{ route('backend.green-note.multiple-invoices.show', $note) }}" class="btn-modern btn-modern-secondary" title="Manage Multiple Invoices">
+                    <i class="bi bi-receipt-cutoff"></i>Multiple Invoices
+                </a>
+                
+                <!-- Hold/Unhold Button -->
+                @if($note->status !== 'H')
+                    <button type="button" class="btn-modern btn-modern-warning" data-bs-toggle="modal" data-bs-target="#holdModal" title="Put on Hold">
+                        <i class="bi bi-pause-circle"></i>Hold
+                    </button>
+                @else
+                    <button type="button" class="btn-modern btn-modern-success" data-bs-toggle="modal" data-bs-target="#unholdModal" title="Remove from Hold">
+                        <i class="bi bi-play-circle"></i>Remove Hold
+                    </button>
+                @endif
+                
+                @if($note->status === 'A')
+                    <a href="{{ route('backend.note.create.payment.note', $note->id) }}" class="btn-modern btn-modern-success">
+                        <i class="bi bi-plus-circle"></i>Create Payment Note
                     </a>
-                    <a href="{{ route('backend.note.index') }}" class="btn btn-outline-secondary">
-                        <i class="bi bi-arrow-left me-1"></i>Back to Notes
+                    
+                    <!-- View Draft Payment Notes -->
+                    <a href="{{ route('backend.payment-note.drafts') }}" class="btn-modern btn-modern-secondary" title="View Draft Payment Notes">
+                        <i class="bi bi-file-earmark-text"></i>Draft Notes
                     </a>
-                </div>
+                @endif
+                
+                <a href="{{ route('backend.note.index') }}" class="btn-modern btn-modern-secondary">
+                    <i class="bi bi-arrow-left"></i>Back to Notes
+                </a>
             </div>
         </div>
     </div>
 
-    <!-- Breadcrumb -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <nav aria-label="breadcrumb">
-                <ol class="breadcrumb">
-                    <li class="breadcrumb-item">
-                        <a href="{{ route('backend.dashboard.index') }}">
-                            <i class="bi bi-house-door me-1"></i>Dashboard
-                        </a>
-                    </li>
-                    <li class="breadcrumb-item">
-                        <a href="{{ route('backend.note.index') }}">Green Notes</a>
-                    </li>
-                    <li class="breadcrumb-item active" aria-current="page">{{ $note->formatted_order_no }}</li>
-                </ol>
-            </nav>
-        </div>
+    <!-- Modern Breadcrumb -->
+    <div class="modern-breadcrumb">
+        <a href="{{ route('backend.dashboard.index') }}">
+            <i class="bi bi-house-door me-1"></i>Dashboard
+        </a>
+        <span class="modern-breadcrumb-separator">/</span>
+        <a href="{{ route('backend.note.index') }}">Expense Notes</a>
+        <span class="modern-breadcrumb-separator">/</span>
+        <span>{{ $note->formatted_order_no }}</span>
     </div>
 
     <div class="row">
         <!-- Main Content -->
         <div class="col-lg-8">
+            <!-- Status Alert Section -->
+            @if($note->status === 'H')
+                <div class="alert alert-warning border-0 shadow-sm mb-4">
+                    <div class="d-flex align-items-center">
+                        <i class="bi bi-exclamation-triangle-fill text-warning me-3 fs-4"></i>
+                        <div class="flex-grow-1">
+                            <h6 class="alert-heading mb-1">Note is On Hold</h6>
+                            <p class="mb-1"><strong>Reason:</strong> {{ $note->hold_reason ?? 'No reason specified' }}</p>
+                            <small class="text-muted">
+                                <strong>Hold Date:</strong> {{ $note->hold_date ? \Carbon\Carbon::parse($note->hold_date)->format('d/m/Y h:i A') : 'N/A' }} |
+                                <strong>Hold By:</strong> {{ $note->holdBy->name ?? 'N/A' }}
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            @endif
+            
+            <!-- Multiple Invoices Summary -->
+            @if(!empty($note->invoices) && is_array($note->invoices) && count($note->invoices) > 1)
+                <div class="alert alert-info border-0 shadow-sm mb-4">
+                    <div class="d-flex align-items-center">
+                        <i class="bi bi-receipt-cutoff text-info me-3 fs-4"></i>
+                        <div class="flex-grow-1">
+                            <h6 class="alert-heading mb-1">Multiple Invoices Attached</h6>
+                            <p class="mb-1">This expense note contains {{ count($note->invoices) }} invoices with a total value of ₹{{ number_format(collect($note->invoices)->sum('invoice_value'), 2) }}</p>
+                            <a href="{{ route('backend.green-note.multiple-invoices.show', $note) }}" class="btn btn-sm btn-outline-info">
+                                <i class="bi bi-eye me-1"></i>View All Invoices
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            @endif
+
             <!-- Note Information Section -->
             <div class="card border-0 shadow-sm mb-4">
                 <div class="card-header bg-white border-0 py-3">
@@ -411,6 +467,73 @@
                     </div>
                 @endif
             @endif
+        </div>
+    </div>
+    
+    <!-- Hold Modal -->
+    <div class="modal fade" id="holdModal" tabindex="-1" aria-labelledby="holdModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="holdModalLabel">
+                        <i class="bi bi-pause-circle text-warning me-2"></i>Put Note on Hold
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form action="{{ route('backend.green-note.hold', $note) }}" method="POST">
+                    @csrf
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="hold_reason" class="form-label">Reason for Hold <span class="text-danger">*</span></label>
+                            <textarea class="form-control" id="hold_reason" name="hold_reason" rows="3" required 
+                                      placeholder="Please specify the reason for putting this note on hold..."></textarea>
+                        </div>
+                        <div class="alert alert-warning">
+                            <i class="bi bi-info-circle me-2"></i>
+                            <strong>Note:</strong> Putting this note on hold will pause all approval processes until the hold is removed.
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-warning">
+                            <i class="bi bi-pause-circle me-1"></i>Put on Hold
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Unhold Modal -->
+    <div class="modal fade" id="unholdModal" tabindex="-1" aria-labelledby="unholdModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="unholdModalLabel">
+                        <i class="bi bi-play-circle text-success me-2"></i>Remove Hold
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form action="{{ route('backend.green-note.remove-hold', $note) }}" method="POST">
+                    @csrf
+                    <div class="modal-body">
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle me-2"></i>
+                            <strong>Current Hold Details:</strong><br>
+                            <strong>Reason:</strong> {{ $note->hold_reason ?? 'No reason specified' }}<br>
+                            <strong>Hold Date:</strong> {{ $note->hold_date ? \Carbon\Carbon::parse($note->hold_date)->format('d/m/Y h:i A') : 'N/A' }}<br>
+                            <strong>Hold By:</strong> {{ $note->holdBy->name ?? 'N/A' }}
+                        </div>
+                        <p>Are you sure you want to remove the hold from this note? This will resume the approval process.</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi bi-play-circle me-1"></i>Remove Hold
+                        </button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 @endsection

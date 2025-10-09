@@ -4,10 +4,19 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Traits\UsesOrganizationDatabase;
 
 class PaymentNoteApprovalPriority extends Model
 {
-    use HasFactory;
+    use HasFactory, UsesOrganizationDatabase;
+    
+    /**
+     * The connection name for the model.
+     * Uses organization database
+     *
+     * @var string
+     */
+    protected $connection = 'organization';
 
     protected $fillable = ['approval_step_id', 'reviewer_id', 'approver_level'];
 

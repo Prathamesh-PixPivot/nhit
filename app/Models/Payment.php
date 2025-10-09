@@ -6,10 +6,20 @@ use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Traits\UsesOrganizationDatabase;
 
 class Payment extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, UsesOrganizationDatabase;
+    
+    /**
+     * The connection name for the model.
+     * Uses organization database
+     *
+     * @var string
+     */
+    protected $connection = 'organization';
+    
     protected $guarded = [];
     protected $table = 'payments_new';
 

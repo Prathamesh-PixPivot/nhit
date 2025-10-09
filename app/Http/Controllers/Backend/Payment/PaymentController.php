@@ -72,7 +72,15 @@ class PaymentController extends Controller
         $userId = Auth::id(); // get logged-in user ID
         $userRoles = Auth::user()->getRoleNames();
         $status = $request->status ?? 'S';
-        if ($userId == 1 || $userRoles->contains('PN User') || $userRoles->contains('PN Approver')) {
+        // Check if user has payment-related roles
+        $hasPaymentAccess = $userId == 1 || 
+            $userRoles->contains('PN User') || 
+            $userRoles->contains('PN Approver') ||
+            $userRoles->contains('approver') ||
+            $userRoles->contains('admin') ||
+            $userRoles->contains('superadmin');
+            
+        if ($hasPaymentAccess) {
             $sl_no_filter = Payment::select('sl_no')->groupBy('sl_no')->get();
             if ($request->ajax()) {
                 // $data = Payment::groupBy('sl_no')

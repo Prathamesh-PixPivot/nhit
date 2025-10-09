@@ -163,14 +163,17 @@
                                     </button>
                                 </div>
 
-                                <!-- Forgot Password -->
+                                <!-- Forgot Password & Sign Up -->
                                 <div class="col-12 text-center">
-                                    @if (Route::has('backend.password.request'))
-                                        <a href="{{ route('backend.password.request') }}" class="text-decoration-none">
-                                            <i class="bi bi-question-circle text-success me-1"></i>
-                                            Forgot Your Password?
-                                        </a>
-                                    @endif
+                                    <a href="{{ route('password.request') }}" class="text-decoration-none">
+                                        <i class="bi bi-question-circle text-success me-1"></i>
+                                        Forgot Your Password?
+                                    </a>
+                                    <span class="mx-2 text-muted">|</span>
+                                    <a href="{{ route('onboarding.welcome') }}" class="text-decoration-none">
+                                        <i class="bi bi-person-plus text-success me-1"></i>
+                                        New Organization? Sign Up
+                                    </a>
                                 </div>
                             </form>
                         </div>

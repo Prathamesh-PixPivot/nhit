@@ -1,0 +1,18 @@
+{
+  "resources/sass/app.scss": {
+    "file": "assets/app-Chu5-Wix.css",
+    "src": "resources/sass/app.scss",
+    "isEntry": true
+  },
+  "resources/css/tw.css": {
+    "file": "assets/tw-BH4fKs2D.css",
+    "src": "resources/css/tw.css",
+    "isEntry": true
+  },
+  "resources/js/app.js": {
+    "file": "assets/app-8EEQXQ9q.js",
+    "name": "app",
+    "src": "resources/js/app.js",
+    "isEntry": true
+  }
+}

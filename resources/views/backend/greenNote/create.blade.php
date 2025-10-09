@@ -306,9 +306,63 @@
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                    </div>
-                </div>
+
+                            <!-- Multiple Invoices Section -->
+                            <div class="col-md-6">
+                                <h6 class="fw-semibold text-primary mb-3">
+                                    <i class="bi bi-receipt-cutoff me-2"></i>Multiple Invoices 
+                                    <small class="text-muted">(Optional)</small>
+                                </h6>
+                                <div class="card border-primary shadow-sm">
+                                    <div class="card-body p-3">
+                                        <div class="alert alert-info mb-3">
+                                            <i class="bi bi-info-circle me-2"></i>
+                                            <strong>New Feature!</strong> You can now add multiple invoices to a single expense note.
+                                        </div>
+                                        <div class="form-check form-switch mb-3">
+                                            <input class="form-check-input" type="checkbox" id="enable_multiple_invoices" name="enable_multiple_invoices" style="width: 3em; height: 1.5em;">
+                                            <label class="form-check-label ms-2" for="enable_multiple_invoices">
+                                                <strong class="text-primary">Enable Multiple Invoices</strong>
+                                            </label>
+                                            <small class="text-muted d-block mt-2">
+                                                <i class="bi bi-arrow-right me-1"></i>
+                                                Toggle this switch to add multiple invoice entries for this expense note
+                                            </small>
+                                        </div>
+
+                                        <div id="multiple_invoices_section" style="display: none;">
+                                            <div class="border rounded p-3 mb-3 bg-light">
+                                                <h6 class="mb-3">Invoice Entries</h6>
+                                                <div id="invoice_entries_container">
+                                                    <!-- Invoice entries will be added here dynamically -->
+                                                </div>
+                                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="addInvoiceEntry()">
+                                                    <i class="bi bi-plus-circle"></i> Add Invoice Entry
+                                                </button>
+                                            </div>
+
+                                            <div class="row">
+                                                <div class="col-md-6">
+                                                    <div class="form-floating">
+                                                        <input type="number" step="0.01" class="form-control"
+                                                               id="total_invoice_value" name="total_invoice_value"
+                                                               value="0.00" readonly>
+                                                        <label for="total_invoice_value">Total Invoice Value</label>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <div class="form-floating">
+                                                        <input type="number" step="0.01" class="form-control"
+                                                               id="total_invoice_gst" name="total_invoice_gst"
+                                                               value="0.00" readonly>
+                                                        <label for="total_invoice_gst">Total GST</label>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
 
                 <!-- Supplier & Classification Section -->
                 <div class="card border-0 shadow-sm mb-4">
@@ -733,7 +787,122 @@
 
         var total = baseValue + gst + otherCharges;
         $('#invoice_value').val(total.toFixed(2));
+
+        // Update main invoice fields when multiple invoices are not enabled
+        if (!$('#enable_multiple_invoices').is(':checked')) {
+            $('input[name="invoice_value"]').val(total.toFixed(2));
+            $('input[name="invoice_base_value"]').val(baseValue.toFixed(2));
+            $('input[name="invoice_gst"]').val(gst.toFixed(2));
+            $('input[name="invoice_other_charges"]').val(otherCharges.toFixed(2));
+        }
     }
+
+    // Multiple invoices functionality
+    let invoiceEntryCount = 0;
+
+    function addInvoiceEntry() {
+        invoiceEntryCount++;
+
+        const invoiceEntryHtml = `
+            <div class="invoice-entry border rounded p-3 mb-3" data-entry="${invoiceEntryCount}">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h6 class="mb-0">Invoice #${invoiceEntryCount}</h6>
+                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeInvoiceEntry(${invoiceEntryCount})">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+                <div class="row g-2">
+                    <div class="col-md-6">
+                        <input type="text" class="form-control form-control-sm"
+                               name="invoices[${invoiceEntryCount}][invoice_number]"
+                               placeholder="Invoice Number" required>
+                    </div>
+                    <div class="col-md-6">
+                        <input type="date" class="form-control form-control-sm"
+                               name="invoices[${invoiceEntryCount}][invoice_date]"
+                               required>
+                    </div>
+                    <div class="col-md-4">
+                        <input type="number" step="0.01" class="form-control form-control-sm invoice-base-value"
+                               name="invoices[${invoiceEntryCount}][invoice_base_value]"
+                               placeholder="Base Value" oninput="calculateMultipleInvoiceTotal()">
+                    </div>
+                    <div class="col-md-4">
+                        <input type="number" step="0.01" class="form-control form-control-sm invoice-gst"
+                               name="invoices[${invoiceEntryCount}][invoice_gst]"
+                               placeholder="GST" oninput="calculateMultipleInvoiceTotal()">
+                    </div>
+                    <div class="col-md-4">
+                        <input type="number" step="0.01" class="form-control form-control-sm invoice-other-charges"
+                               name="invoices[${invoiceEntryCount}][invoice_other_charges]"
+                               placeholder="Other Charges" oninput="calculateMultipleInvoiceTotal()">
+                    </div>
+                    <div class="col-12">
+                        <input type="number" step="0.01" class="form-control form-control-sm invoice-total"
+                               name="invoices[${invoiceEntryCount}][invoice_value]"
+                               placeholder="Total Value" readonly>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        $('#invoice_entries_container').append(invoiceEntryHtml);
+    }
+
+    function removeInvoiceEntry(entryId) {
+        $(`.invoice-entry[data-entry="${entryId}"]`).remove();
+        calculateMultipleInvoiceTotal();
+    }
+
+    function calculateMultipleInvoiceTotal() {
+        let totalValue = 0;
+        let totalGST = 0;
+        let totalBaseValue = 0;
+        let totalOtherCharges = 0;
+
+        $('.invoice-entry').each(function() {
+            const baseValue = parseFloat($(this).find('.invoice-base-value').val()) || 0;
+            const gst = parseFloat($(this).find('.invoice-gst').val()) || 0;
+            const otherCharges = parseFloat($(this).find('.invoice-other-charges').val()) || 0;
+            const invoiceTotal = baseValue + gst + otherCharges;
+
+            $(this).find('.invoice-total').val(invoiceTotal.toFixed(2));
+
+            totalBaseValue += baseValue;
+            totalGST += gst;
+            totalOtherCharges += otherCharges;
+            totalValue += invoiceTotal;
+        });
+
+        $('#total_invoice_value').val(totalValue.toFixed(2));
+        $('#total_invoice_gst').val(totalGST.toFixed(2));
+
+        // Update main invoice fields
+        if ($('#enable_multiple_invoices').is(':checked')) {
+            $('input[name="invoice_value"]').val(totalValue.toFixed(2));
+            $('input[name="invoice_base_value"]').val(totalBaseValue.toFixed(2));
+            $('input[name="invoice_gst"]').val(totalGST.toFixed(2));
+            $('input[name="invoice_other_charges"]').val(totalOtherCharges.toFixed(2));
+        }
+    }
+
+    // Toggle multiple invoices section
+    $('#enable_multiple_invoices').on('change', function() {
+        if ($(this).is(':checked')) {
+            $('#multiple_invoices_section').slideDown();
+            // Clear main invoice fields when multiple invoices are enabled
+            $('#invoice_number').val('');
+            $('#invoice_date').val('');
+            $('#invoice_base_value').val('');
+            $('#invoice_gst').val('');
+            $('#invoice_other_charges').val('');
+            $('#invoice_value').val('');
+        } else {
+            $('#multiple_invoices_section').slideUp();
+            $('#invoice_entries_container').empty();
+            invoiceEntryCount = 0;
+        }
+    });
 
     // Calculate budget comparison
     function calculateTotalBudget() {
@@ -2186,6 +2355,181 @@
                     button.closest('form').submit();
                 }, 100);
             }
+        }
+
+        // Multiple Invoices Functionality
+        let invoiceEntryIndex = 0;
+
+        // Toggle multiple invoices section
+        $('#enable_multiple_invoices').on('change', function() {
+            if ($(this).is(':checked')) {
+                $('#multiple_invoices_section').slideDown();
+                // Add first invoice entry if none exist
+                if ($('#invoice_entries_container').children().length === 0) {
+                    addInvoiceEntry();
+                }
+                // Disable single invoice fields
+                $('#invoice_number, #invoice_date, #invoice_base_value, #invoice_gst, #invoice_other_charges').prop('readonly', true).addClass('bg-light');
+            } else {
+                $('#multiple_invoices_section').slideUp();
+                // Enable single invoice fields
+                $('#invoice_number, #invoice_date, #invoice_base_value, #invoice_gst, #invoice_other_charges').prop('readonly', false).removeClass('bg-light');
+                // Clear all invoice entries
+                $('#invoice_entries_container').empty();
+                invoiceEntryIndex = 0;
+                updateMultipleInvoiceTotals();
+            }
+        });
+
+        function addInvoiceEntry() {
+            const entryHtml = `
+                <div class="invoice-entry border rounded p-3 mb-3 bg-white" data-index="${invoiceEntryIndex}">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h6 class="text-primary mb-0">
+                            <i class="bi bi-receipt me-2"></i>Invoice #${invoiceEntryIndex + 1}
+                        </h6>
+                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeInvoiceEntry(this)">
+                            <i class="bi bi-trash"></i> Remove
+                        </button>
+                    </div>
+                    
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="form-floating">
+                                <input type="text" class="form-control" 
+                                       name="invoices[${invoiceEntryIndex}][invoice_number]" 
+                                       placeholder="Invoice Number" required>
+                                <label>Invoice Number *</label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-floating">
+                                <input type="date" class="form-control" 
+                                       name="invoices[${invoiceEntryIndex}][invoice_date]" 
+                                       placeholder="Invoice Date" required>
+                                <label>Invoice Date *</label>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-floating">
+                                <input type="number" step="0.01" class="form-control invoice-base-value" 
+                                       name="invoices[${invoiceEntryIndex}][invoice_base_value]" 
+                                       placeholder="Base Value" onchange="calculateInvoiceEntryTotal(this)">
+                                <label>Base Value (₹)</label>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-floating">
+                                <input type="number" step="0.01" class="form-control invoice-gst-value" 
+                                       name="invoices[${invoiceEntryIndex}][invoice_gst]" 
+                                       placeholder="GST" onchange="calculateInvoiceEntryTotal(this)">
+                                <label>GST (₹)</label>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-floating">
+                                <input type="number" step="0.01" class="form-control invoice-other-charges" 
+                                       name="invoices[${invoiceEntryIndex}][invoice_other_charges]" 
+                                       placeholder="Other Charges" onchange="calculateInvoiceEntryTotal(this)">
+                                <label>Other Charges (₹)</label>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-floating">
+                                <input type="number" step="0.01" class="form-control invoice-total-value" 
+                                       name="invoices[${invoiceEntryIndex}][invoice_value]" 
+                                       placeholder="Total Value" readonly>
+                                <label>Total Value (₹)</label>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <div class="form-floating">
+                                <input type="text" class="form-control" 
+                                       name="invoices[${invoiceEntryIndex}][description]" 
+                                       placeholder="Description">
+                                <label>Description (Optional)</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            $('#invoice_entries_container').append(entryHtml);
+            invoiceEntryIndex++;
+            
+            // Show success notification
+            showNotification('Invoice entry added successfully!', 'success');
+        }
+
+        function removeInvoiceEntry(button) {
+            const entriesCount = $('#invoice_entries_container .invoice-entry').length;
+            
+            if (entriesCount <= 1) {
+                showNotification('At least one invoice entry is required!', 'warning');
+                return;
+            }
+            
+            if (confirm('Are you sure you want to remove this invoice entry?')) {
+                $(button).closest('.invoice-entry').fadeOut(300, function() {
+                    $(this).remove();
+                    updateMultipleInvoiceTotals();
+                    // Renumber remaining invoices
+                    $('#invoice_entries_container .invoice-entry').each(function(index) {
+                        $(this).find('h6').html(`<i class="bi bi-receipt me-2"></i>Invoice #${index + 1}`);
+                    });
+                    showNotification('Invoice entry removed successfully!', 'info');
+                });
+            }
+        }
+
+        function calculateInvoiceEntryTotal(input) {
+            const entryRow = $(input).closest('.invoice-entry');
+            const baseValue = parseFloat(entryRow.find('.invoice-base-value').val()) || 0;
+            const gst = parseFloat(entryRow.find('.invoice-gst-value').val()) || 0;
+            const otherCharges = parseFloat(entryRow.find('.invoice-other-charges').val()) || 0;
+            const total = baseValue + gst + otherCharges;
+            
+            entryRow.find('.invoice-total-value').val(total.toFixed(2));
+            updateMultipleInvoiceTotals();
+        }
+
+        function updateMultipleInvoiceTotals() {
+            let totalValue = 0;
+            let totalGst = 0;
+            
+            $('#invoice_entries_container .invoice-entry').each(function() {
+                const entryTotal = parseFloat($(this).find('.invoice-total-value').val()) || 0;
+                const entryGst = parseFloat($(this).find('.invoice-gst-value').val()) || 0;
+                totalValue += entryTotal;
+                totalGst += entryGst;
+            });
+            
+            $('#total_invoice_value').val(totalValue.toFixed(2));
+            $('#total_invoice_gst').val(totalGst.toFixed(2));
+        }
+
+        function showNotification(message, type = 'info') {
+            const bgColor = type === 'success' ? 'bg-success' : type === 'warning' ? 'bg-warning' : type === 'error' ? 'bg-danger' : 'bg-info';
+            const icon = type === 'success' ? 'check-circle' : type === 'warning' ? 'exclamation-triangle' : type === 'error' ? 'x-circle' : 'info-circle';
+            
+            const notification = $(`
+                <div class="alert alert-dismissible fade show position-fixed ${bgColor} text-white" 
+                     style="top: 20px; right: 20px; z-index: 9999; min-width: 300px;">
+                    <div class="d-flex align-items-center">
+                        <i class="bi bi-${icon} me-2"></i>
+                        ${message}
+                    </div>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert"></button>
+                </div>
+            `);
+            
+            $('body').append(notification);
+            
+            setTimeout(function() {
+                notification.fadeOut(300, function() {
+                    $(this).remove();
+                });
+            }, 5000);
         }
 
         $('form').on('submit', function(e) {

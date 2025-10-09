@@ -2,17 +2,28 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Carbon\Carbon;
+use App\Traits\UsesOrganizationDatabase;
 
 class GreenNote extends Model
 {
+    use UsesOrganizationDatabase;
+    
+    /**
+     * The connection name for the model.
+     * Always use organization database for green notes
+     *
+     * @var string
+     */
+    protected $connection = 'organization';
+    
     protected $fillable = [
         'user_id', //
         'vendor_id',
         'department_id',
         'order_date',
-        'order_no',
         'base_value',
         'gst',
         'after_tax',
@@ -29,6 +40,7 @@ class GreenNote extends Model
         'invoice_gst',
         'invoice_value',
         'invoice_other_charges',
+        'invoices', // Multiple invoices support
         'delayed_damages',
         'contract_start_date',
         'contract_end_date',
@@ -55,6 +67,14 @@ class GreenNote extends Model
         'deviations',
         'specify_deviation',
         'status',
+        'hold_reason',
+        'hold_date',
+        'hold_by',
+    ];
+
+    protected $casts = [
+        'invoices' => 'array',
+        'hold_date' => 'datetime',
     ];
     public function department()
     {
@@ -121,5 +141,71 @@ class GreenNote extends Model
     {
         return $this->hasOne(PaymentNote::class, 'green_note_id');
         // return $this->hasMany(PaymentNote::class, 'green_note_id');
+    }
+
+    /**
+     * Get the user who put this note on hold
+     */
+    public function holdBy()
+    {
+        return $this->belongsTo(User::class, 'hold_by');
+    }
+
+    /**
+     * Check if the note is on hold
+     */
+    public function isOnHold()
+    {
+        return $this->status === 'H';
+    }
+
+    /**
+     * Put the note on hold
+     */
+    public function putOnHold($reason, $userId)
+    {
+        $this->update([
+            'status' => 'H',
+            'hold_reason' => $reason,
+            'hold_date' => now(),
+            'hold_by' => $userId,
+        ]);
+    }
+
+    /**
+     * Remove the note from hold
+     */
+    public function removeFromHold($newStatus = 'P')
+    {
+        $this->update([
+            'status' => $newStatus,
+            'hold_reason' => null,
+            'hold_date' => null,
+            'hold_by' => null,
+        ]);
+    }
+
+    /**
+     * Get total invoice value from multiple invoices
+     */
+    public function getTotalInvoiceValueAttribute()
+    {
+        if (!empty($this->invoices) && is_array($this->invoices)) {
+            return collect($this->invoices)->sum('invoice_value');
+        }
+        
+        return $this->invoice_value ?? 0;
+    }
+
+    /**
+     * Get invoice count
+     */
+    public function getInvoiceCountAttribute()
+    {
+        if (!empty($this->invoices) && is_array($this->invoices)) {
+            return count($this->invoices);
+        }
+        
+        return $this->invoice_number ? 1 : 0;
     }
 }

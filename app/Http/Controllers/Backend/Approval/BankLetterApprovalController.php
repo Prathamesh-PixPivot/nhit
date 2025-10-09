@@ -17,7 +17,7 @@ class BankLetterApprovalController extends Controller
      */
     public function index()
     {
-        $users = User::role('PN Approver')->get();
+        $users = \App\Services\RoleService::getUsersWithRoles(['PN Approver', 'approver', 'reviewer']);
         $approvalSteps = BankLetterApprovalStep::with('approvers.user')->get();
 
         return view('backend.payment.bankLetter.create', compact('users', 'approvalSteps'));
@@ -28,7 +28,10 @@ class BankLetterApprovalController extends Controller
      */
     public function create()
     {
-        //
+        $users = \App\Services\RoleService::getUsersWithRoles(['PN Approver', 'approver', 'reviewer']);
+        $approvalSteps = BankLetterApprovalStep::with('approvers.user')->get();
+
+        return view('backend.payment.bankLetter.create', compact('users', 'approvalSteps'));
     }
 
     /**
@@ -63,7 +66,7 @@ class BankLetterApprovalController extends Controller
      */
     public function show(string $id)
     {
-        $users = User::role('PN Approver')->get();
+        $users = \App\Services\RoleService::getUsersWithRoles(['PN Approver', 'approver', 'reviewer']);
 
         $step = BankLetterApprovalStep::with('approvers.user')->findOrFail($id);
 
@@ -75,7 +78,7 @@ class BankLetterApprovalController extends Controller
      */
     public function edit(string $id)
     {
-        $users = User::role('PN Approver')->get();
+        $users = \App\Services\RoleService::getUsersWithRoles(['PN Approver', 'approver', 'reviewer']);
 
         $step = BankLetterApprovalStep::with('approvers.user')->findOrFail($id);
 

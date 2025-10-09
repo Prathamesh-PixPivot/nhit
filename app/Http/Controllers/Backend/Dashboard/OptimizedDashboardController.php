@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Yajra\DataTables\Facades\DataTables;
 use Illuminate\Support\Collection;
+use App\Services\RoleService;
 
 class OptimizedDashboardController extends Controller
 {
@@ -449,7 +450,8 @@ class OptimizedDashboardController extends Controller
      */
     private function getOptimizedUserApprovalData(): array
     {
-        $users = User::role(['GN Approver', 'ER Approver', 'PN Approver', 'QS'])->get();
+        // Use dynamic role service to get users with approval roles
+        $users = \App\Services\RoleService::getUsersWithApprovalRoles();
         $userData = [];
 
         foreach ($users as $user) {

@@ -4,10 +4,20 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Traits\UsesOrganizationDatabase;
 
 class ReimbursementNote extends Model
 {
-    use HasFactory;
+    use HasFactory, UsesOrganizationDatabase;
+    
+    /**
+     * The connection name for the model.
+     * Uses organization database
+     *
+     * @var string
+     */
+    protected $connection = 'organization';
+    
     protected $fillable = [
         'user_id', //
         'select_user_id', //

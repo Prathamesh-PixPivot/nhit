@@ -3,9 +3,20 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\UsesOrganizationDatabase;
 
 class BankLetterApprovalLog extends Model
 {
+    use UsesOrganizationDatabase;
+    
+    /**
+     * The connection name for the model.
+     * Uses organization database
+     *
+     * @var string
+     */
+    protected $connection = 'organization';
+    
     protected $fillable = ['payment_id', 'sl_no', 'priority_id', 'reviewer_id', 'status', 'comments'];
 
     public function bankLetterApprovalPriority()

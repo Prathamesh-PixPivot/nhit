@@ -32,7 +32,9 @@
                             enctype="multipart/form-data">
                             @csrf
                             <input type="hidden" name="user_id" value="{{ auth()->user()->id }}">
-                            <input type="hidden" name="green_note_id" value="{{ $note->id }}">
+                            @if($greenNote)
+                                <input type="hidden" name="green_note_id" value="{{ $greenNote->id }}">
+                            @endif
 
                             <div class="col-4">
                                 <label for="one" class="form-label">Note No</label>
@@ -42,18 +44,20 @@
                                     <span class="text-danger">{{ $message }}</span>
                                 @enderror
                             </div>
+
+                            @if($greenNote)
                             <div class="col-4">
                                 <label for="one" class="form-label">Green Note No</label>
-                                <input type="text" class="form-control" value="{{ $note->formatted_order_no }}" readonly>
+                                <input type="text" class="form-control" value="{{ $greenNote->formatted_order_no }}" readonly>
                             </div>
                             <div class="col-4">
                                 <label for="one" class="form-label">Department</label>
-                                <input type="text" class="form-control" value="{{ $note->department->name }}" readonly>
+                                <input type="text" class="form-control" value="{{ $greenNote->department->name }}" readonly>
                             </div>
                             <div class="col-4">
                                 <label for="one" class="form-label">Green Note App Date:</label>
                                 @php
-                                    $lastStep = $note->approvalLogs->last();
+                                    $lastStep = $greenNote->approvalLogs->last();
                                 @endphp
                                 @if ($lastStep)
                                     <input type="text" class="form-control"
@@ -69,31 +73,31 @@
                             </div>
                             <div class="col-12">
                                 <label for="one" class="form-label">Subject:</label>
-                                <textarea id="subject" required name="subject" cols="30" rows="2" class="form-control">{{ old('subject') }}</textarea>
+                                <textarea id="subject" required name="subject" cols="30" rows="2" class="form-control">{{ old('subject', $greenNote ? 'Payment for ' . $greenNote->brief_of_goods_services : '') }}</textarea>
                             </div>
                             <div class="col-4">
                                 <label for="one" class="form-label">Vendor Code</label>
                                 <input type="text" class="form-control"
-                                    value="{{ $note->supplier->vendor_code ?? '-' }}" readonly>
+                                    value="{{ $greenNote->supplier->vendor_code ?? '-' }}" readonly>
                             </div>
                             <div class="col-4">
                                 <label for="one" class="form-label">Vendor Name</label>
                                 <input type="text" class="form-control"
-                                    value="{{ $note->supplier->vendor_name ?? '-' }}" readonly>
+                                    value="{{ $greenNote->supplier->vendor_name ?? '-' }}" readonly>
                             </div>
                             <div class="col-4">
                                 <label for="one" class="form-label">Invoice No.</label>
-                                <input type="text" class="form-control" value="{{ $note->invoice_number }}" readonly>
+                                <input type="text" class="form-control" value="{{ $greenNote->invoice_number }}" readonly>
                             </div>
                             <div class="col-4">
                                 <label for="one" class="form-label">Invoice Date</label>
                                 <input type="text" class="form-control"
-                                    value="{{ $note->invoice_date ? date('d/m/Y', strtotime($note->invoice_date)) : '-' }}"
+                                    value="{{ $greenNote->invoice_date ? date('d/m/Y', strtotime($greenNote->invoice_date)) : '-' }}"
                                     readonly>
                             </div>
                             <div class="col-4">
                                 <label for="one" class="form-label">Invoice Amount:</label>
-                                <input type="text" class="form-control" value="{{ $note->invoice_value }}" readonly>
+                                <input type="text" class="form-control" value="{{ $greenNote->invoice_value }}" readonly>
                             </div>
                             <div class="col-4">
                                 <label for="one" class="form-label">Invoice Approved by:</label>
@@ -104,16 +108,16 @@
                             </div>
                             <div class="col-4">
                                 <label for="one" class="form-label">LOA/PO No.:</label>
-                                <input type="text" class="form-control" value="{{ $note->order_no }}" readonly>
+                                <input type="text" class="form-control" value="{{ $greenNote->order_no }}" readonly>
                             </div>
                             <div class="col-4">
                                 <label for="one" class="form-label">LOA/PO Date:</label>
-                                <input type="text" class="form-control" value="{{ $note->order_date }}" readonly>
+                                <input type="text" class="form-control" value="{{ $greenNote->order_date }}" readonly>
                             </div>
 
                             <div class="col-4">
                                 <label for="one" class="form-label">LOA/PO Amount:</label>
-                                <input type="text" class="form-control" value="{{ $note->total_amount }}" readonly>
+                                <input type="text" class="form-control" value="{{ $greenNote->total_amount }}" readonly>
                             </div>
 
                             <div class="">
@@ -123,7 +127,7 @@
                                             placeholder="Taxable Amount" readonly>
                                     </div>
                                     <div class="col-5 mb-2">
-                                        <input type="number" value="{{ $note->invoice_base_value }}"
+                                        <input type="number" value="{{ $greenNote->invoice_base_value }}"
                                             class="form-control" placeholder="Amount" readonly>
                                     </div>
                                 </div>
@@ -133,7 +137,7 @@
                                             placeholder="Add : GST " readonly>
                                     </div>
                                     <div class="col-5 mb-2">
-                                        <input type="number" value="{{ $note->invoice_gst }}" class="form-control"
+                                        <input type="number" value="{{ $greenNote->invoice_gst }}" class="form-control"
                                             placeholder="Amount" readonly>
                                     </div>
                                 </div>
@@ -143,7 +147,7 @@
                                             placeholder="Add: Other charges " readonly>
                                     </div>
                                     <div class="col-5 mb-2">
-                                        <input type="number" value="{{ $note->invoice_other_charges }}"
+                                        <input type="number" value="{{ $greenNote->invoice_other_charges }}"
                                             class="form-control" placeholder="Amount" readonly>
                                     </div>
                                 </div>
@@ -158,6 +162,7 @@
                                     </div>
                                 </div>
                             </div>
+                            @endif
                             {{-- <div class="">
                                 <label>Less: Particulars & Payable Amount</label>
                                 <div class="row mt-2">
@@ -245,53 +250,126 @@
                                     </div>
                                 </div>
                             </div> --}}
-                            <div>
-                                <label>Less: Particulars & Payable Amount</label>
-                                <div id="lessContainer">
-                                    @for ($i = 0; $i < 4; $i++)
-                                        <div class="row mt-2">
+                            <div class="card border-warning mb-4">
+                                <div class="card-header bg-warning text-dark">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <h6 class="mb-0">
+                                            <i class="bi bi-dash-circle me-2"></i>Less: Particulars & Payable Amount
+                                        </h6>
+                                        <button type="button" class="btn btn-sm btn-outline-dark" onclick="addParticularRow('less')">
+                                            <i class="bi bi-plus-circle me-1"></i>Add Row
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <div id="lessContainer">
+                                        <div class="row mt-2 particular-row">
                                             <div class="col-5 mb-2">
-                                                <input type="text"
-                                                    name="less_particulars[{{ $i }}][particular]"
-                                                    class="form-control" placeholder="Particular">
+                                                <div class="form-floating">
+                                                    <input type="text" name="less_particulars[0][particular]" 
+                                                           class="form-control" placeholder="Particular">
+                                                    <label>Particular</label>
+                                                </div>
                                             </div>
                                             <div class="col-5 mb-2">
-                                                <input type="number"
-                                                    name="less_particulars[{{ $i }}][amount]"
-                                                    class="form-control less-amount" placeholder="Amount">
+                                                <div class="form-floating">
+                                                    <input type="number" name="less_particulars[0][amount]" 
+                                                           class="form-control less-amount" placeholder="Amount" 
+                                                           onchange="calculateNetAmount()" step="0.01">
+                                                    <label>Amount (₹)</label>
+                                                </div>
+                                            </div>
+                                            <div class="col-2 mb-2 d-flex align-items-center">
+                                                <button type="button" class="btn btn-outline-danger btn-sm" 
+                                                        onclick="removeParticularRow(this)" title="Remove Row">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
                                             </div>
                                         </div>
-                                    @endfor
+                                    </div>
+                                    <div class="mt-3">
+                                        <strong>Total Less Amount: ₹<span id="totalLessAmount">0.00</span></strong>
+                                    </div>
                                 </div>
                             </div>
 
-                            <div>
-                                <label>Add: Particulars & Payable Amount</label>
-                                <div id="addContainer">
-                                    @for ($i = 0; $i < 4; $i++)
-                                        <div class="row mt-2">
+                            <div class="card border-success mb-4">
+                                <div class="card-header bg-success text-white">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <h6 class="mb-0">
+                                            <i class="bi bi-plus-circle me-2"></i>Add: Particulars & Payable Amount
+                                        </h6>
+                                        <button type="button" class="btn btn-sm btn-outline-light" onclick="addParticularRow('add')">
+                                            <i class="bi bi-plus-circle me-1"></i>Add Row
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <div id="addContainer">
+                                        <div class="row mt-2 particular-row">
                                             <div class="col-5 mb-2">
-                                                <input type="text"
-                                                    name="add_particulars[{{ $i }}][particular]"
-                                                    class="form-control" placeholder="Particular">
+                                                <div class="form-floating">
+                                                    <input type="text" name="add_particulars[0][particular]" 
+                                                           class="form-control" placeholder="Particular">
+                                                    <label>Particular</label>
+                                                </div>
                                             </div>
                                             <div class="col-5 mb-2">
-                                                <input type="number" name="add_particulars[{{ $i }}][amount]"
-                                                    class="form-control add-amount" placeholder="Amount">
+                                                <div class="form-floating">
+                                                    <input type="number" name="add_particulars[0][amount]" 
+                                                           class="form-control add-amount" placeholder="Amount" 
+                                                           onchange="calculateNetAmount()" step="0.01">
+                                                    <label>Amount (₹)</label>
+                                                </div>
+                                            </div>
+                                            <div class="col-2 mb-2 d-flex align-items-center">
+                                                <button type="button" class="btn btn-outline-danger btn-sm" 
+                                                        onclick="removeParticularRow(this)" title="Remove Row">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
                                             </div>
                                         </div>
-                                    @endfor
+                                    </div>
+                                    <div class="mt-3">
+                                        <strong>Total Add Amount: ₹<span id="totalAddAmount">0.00</span></strong>
+                                    </div>
                                 </div>
                             </div>
 
-                            <div class="row mt-2">
-                                <div class="col-5 mb-2">
-                                    <input type="text" value="Net Payable Amount" class="form-control"
-                                        placeholder="Net Payable Amount" readonly>
+                            <div class="card border-primary mb-4">
+                                <div class="card-header bg-primary text-white">
+                                    <h6 class="mb-0">
+                                        <i class="bi bi-calculator me-2"></i>Net Payable Amount Calculation
+                                    </h6>
                                 </div>
-                                <div class="col-5 mb-2">
-                                    <input type="text" class="form-control" placeholder="Amount" readonly
-                                        id="net_payable_amount" name="net_payable_amount">
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-3">
+                                            <div class="text-center p-3 bg-light rounded">
+                                                <h6 class="text-muted">Gross Amount</h6>
+                                                <h4 class="text-primary">₹<span id="displayGrossAmount">{{ number_format($grossAmount ?? 0, 2) }}</span></h4>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="text-center p-3 bg-light rounded">
+                                                <h6 class="text-muted">Less Amount</h6>
+                                                <h4 class="text-warning">-₹<span id="displayLessAmount">0.00</span></h4>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="text-center p-3 bg-light rounded">
+                                                <h6 class="text-muted">Add Amount</h6>
+                                                <h4 class="text-success">+₹<span id="displayAddAmount">0.00</span></h4>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="text-center p-3 bg-primary text-white rounded">
+                                                <h6>Net Payable</h6>
+                                                <h4>₹<span id="displayNetAmount">{{ number_format($grossAmount ?? 0, 2) }}</span></h4>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <input type="hidden" id="net_payable_amount" name="net_payable_amount" value="{{ $grossAmount ?? 0 }}">
                                 </div>
                             </div>
                             <div class="row mt-2">
@@ -306,6 +384,30 @@
                             </div>
                             <div class="">
                                 <label>Bank Details:</label>
+                                
+                                {{-- Vendor Account Selection --}}
+                                @if($greenNote && $greenNote->supplier && $greenNote->supplier->accounts && $greenNote->supplier->accounts->count() > 1)
+                                    <div class="row mt-2">
+                                        <div class="col-12 mb-3">
+                                            <label class="form-label">Select Vendor Account:</label>
+                                            <select class="form-select" id="vendor_account_select" name="vendor_account_id">
+                                                <option value="">Select Account</option>
+                                                @foreach($greenNote->supplier->accounts as $account)
+                                                    <option value="{{ $account->id }}" 
+                                                            {{ $account->is_primary ? 'selected' : '' }}
+                                                            data-account-name="{{ $account->account_name }}"
+                                                            data-account-number="{{ $account->account_number }}"
+                                                            data-bank-name="{{ $account->name_of_bank }}"
+                                                            data-ifsc-code="{{ $account->ifsc_code }}"
+                                                            data-branch-name="{{ $account->branch_name }}">
+                                                        {{ $account->account_number }} - {{ $account->name_of_bank }}
+                                                        @if($account->is_primary) (Primary) @endif
+                                                    </option>
+                                                @endforeach
+                                            </select>
+                                        </div>
+                                    </div>
+                                @endif
 
                                 <div class="row mt-2">
                                     <div class="col-5 mb-2">
@@ -313,8 +415,9 @@
                                             placeholder="Name of Account holder" readonly>
                                     </div>
                                     <div class="col-5 mb-2">
-                                        <input type="text" value="{{ $note->supplier->vendor_name ?? '-' }}"
-                                            class="form-control" placeholder="Amount" readonly>
+                                        <input type="text" id="account_holder_name" 
+                                            value="@if($greenNote && $greenNote->supplier){{ $greenNote->supplier->primaryAccount->account_name ?? $greenNote->supplier->vendor_name ?? '-' }}@endif"
+                                            class="form-control" placeholder="Account Holder Name" readonly>
                                     </div>
                                 </div>
                                 <div class="row">
@@ -323,8 +426,9 @@
                                             placeholder="Bank Name " readonly>
                                     </div>
                                     <div class="col-5 mb-2">
-                                        <input type="text" value="{{ $note->supplier->name_of_bank ?? '-' }}"
-                                            class="form-control" placeholder="Amount" readonly>
+                                        <input type="text" id="bank_name"
+                                            value="@if($greenNote && $greenNote->supplier){{ $greenNote->supplier->primaryAccount->name_of_bank ?? $greenNote->supplier->name_of_bank ?? '-' }}@endif"
+                                            class="form-control" placeholder="Bank Name" readonly>
                                     </div>
                                 </div>
                                 <div class="row">
@@ -333,8 +437,9 @@
                                             placeholder="Bank Account" readonly>
                                     </div>
                                     <div class="col-5 mb-2">
-                                        <input type="text" value="{{ $note->supplier->account_number ?? '-' }}"
-                                            class="form-control" placeholder="Amount" readonly>
+                                        <input type="text" id="account_number"
+                                            value="@if($greenNote && $greenNote->supplier){{ $greenNote->supplier->primaryAccount->account_number ?? $greenNote->supplier->account_number ?? '-' }}@endif"
+                                            class="form-control" placeholder="Account Number" readonly>
                                     </div>
                                 </div>
                                 <div class="row">
@@ -343,10 +448,24 @@
                                             readonly>
                                     </div>
                                     <div class="col-5 mb-2">
-                                        <input type="text" value="{{ $note->supplier->ifsc_code ?? '-' }}"
-                                            class="form-control" placeholder="Amount" readonly>
+                                        <input type="text" id="ifsc_code"
+                                            value="@if($greenNote && $greenNote->supplier){{ $greenNote->supplier->primaryAccount->ifsc_code ?? $greenNote->supplier->ifsc_code ?? '-' }}@endif"
+                                            class="form-control" placeholder="IFSC Code" readonly>
                                     </div>
                                 </div>
+                                @if($greenNote && $greenNote->supplier->primaryAccount && $greenNote->supplier->primaryAccount->branch_name)
+                                    <div class="row">
+                                        <div class="col-5 mb-2">
+                                            <input type="text" value="Branch Name" class="form-control"
+                                                placeholder="Branch Name" readonly>
+                                        </div>
+                                        <div class="col-5 mb-2">
+                                            <input type="text" id="branch_name"
+                                                value="{{ $greenNote->supplier->primaryAccount->branch_name }}"
+                                                class="form-control" placeholder="Branch Name" readonly>
+                                        </div>
+                                    </div>
+                                @endif
                             </div>
 
                             <div class="col-12">
@@ -407,8 +526,8 @@
             <div class="col-lg-12">
                 <div class="card">
                     <div class="card-body">
-                        <h5 class="card-title">Attached Supporting Docs <a class="btn btn-primary"
-                                href="{{ route('backend.note.view.pdf', $note->id) }}">View Green Note</a></h5>
+                        <h5 class="card-title">Attached Supporting Docs @if($greenNote)<a class="btn btn-primary"
+                                href="{{ route('backend.note.view.pdf', $greenNote->id) }}">View Green Note</a>@endif</h5>
                         <!-- Vertical Form -->
                         <!-- Table with stripped rows -->
                         <table class="table datatable">
@@ -425,42 +544,43 @@
                                 </tr>
                             </thead>
                             <tbody>
+                                @if($greenNote && isset($documents))
+                                    @foreach ($documents as $index => $document)
+                                        <tr>
+                                            <td>{{ $index + 1 }}</td>
+                                            <td>{{ $document->name }}</td>
+                                            <td>
+                                                @php
+                                                    $extension = pathinfo($document->file_path, PATHINFO_EXTENSION);
+                                                @endphp
 
-                                @foreach ($documents as $index => $document)
-                                    <tr>
-                                        <td>{{ $index + 1 }}</td>
-                                        <td>{{ $document->name }}</td>
-                                        <td>
-                                            @php
-                                                $extension = pathinfo($document->file_path, PATHINFO_EXTENSION);
-                                            @endphp
+                                                @if (in_array($extension, ['jpg', 'jpeg', 'png', 'gif']))
+                                                    <img src="{{ asset('notes/documents/' . $document->file_path) }}"
+                                                        alt="Document Image" width="70" height="70">
+                                                @else
+                                                    <a href="{{ asset('notes/documents/' . $document->file_path) }}"
+                                                        target="_blank"><i class="bi bi-file-earmark-text-fill"></i></a>
+                                                @endif
+                                            </td>
+                                            <td>{{ $document->created_at->setTimezone('Asia/Kolkata')->format('d/m/Y h:i A') }}
+                                            </td>
+                                            <td>{{ $document->user->name }}</td>
+                                            <td> <a href="{{ asset('notes/documents/' . $document->file_path) }}" download>
+                                                    <i class="bi bi-download"></i>
 
-                                            @if (in_array($extension, ['jpg', 'jpeg', 'png', 'gif']))
-                                                <img src="{{ asset('notes/documents/' . $document->file_path) }}"
-                                                    alt="Document Image" width="70" height="70">
-                                            @else
-                                                <a href="{{ asset('notes/documents/' . $document->file_path) }}"
-                                                    target="_blank"><i class="bi bi-file-earmark-text-fill"></i></a>
-                                            @endif
-                                        </td>
-                                        <td>{{ $document->created_at->setTimezone('Asia/Kolkata')->format('d/m/Y h:i A') }}
-                                        </td>
-                                        <td>{{ $document->user->name }}</td>
-                                        <td> <a href="{{ asset('notes/documents/' . $document->file_path) }}" download>
-                                                <i class="bi bi-download"></i>
-
-                                            </a> |
-                                            <form action="{{ route('backend.documents.destroy', $document->id) }}"
-                                                method="POST" class="d-inline">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button type="submit" class="btn btn-none btn-sm delete-btn"><i
-                                                        class="bi bi-trash"></i>
-                                                </button>
-                                            </form>
-                                        </td>
-                                    </tr>
-                                @endforeach
+                                                </a> |
+                                                <form action="{{ route('backend.documents.destroy', $document->id) }}"
+                                                    method="POST" class="d-inline">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="submit" class="btn btn-none btn-sm delete-btn"><i
+                                                            class="bi bi-trash"></i>
+                                                    </button>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                @endif
 
                             </tbody>
                         </table>
@@ -476,36 +596,181 @@
     {{-- - --}}
 
     <script>
+        let lessRowIndex = 1;
+        let addRowIndex = 1;
+
         document.addEventListener("DOMContentLoaded", function() {
-            function calculateNetPayable() {
-                let grossAmount = parseFloat(document.getElementById("gross_amount").value) || 0;
+            // Initial calculation
+            calculateNetAmount();
+        });
 
-                // Sum of Less Amounts
-                let lessAmount = Array.from(document.querySelectorAll(".less-amount")).reduce((total, input) => {
-                    return total + (parseFloat(input.value) || 0);
-                }, 0);
-
-                // Sum of Add Amounts
-                let addAmount = Array.from(document.querySelectorAll(".add-amount")).reduce((total, input) => {
-                    return total + (parseFloat(input.value) || 0);
-                }, 0);
-
-                // Net Payable Calculation
-                let netPayable = grossAmount - lessAmount + addAmount;
-                let netPayableRound = Math.round(netPayable);
-
-                // Update values
-                document.getElementById("net_payable_amount").value = netPayable.toFixed(2);
-                document.getElementById("net_payable_round_off").value = netPayableRound.toFixed(2);
+        // Add new particular row
+        function addParticularRow(type) {
+            const container = document.getElementById(type + 'Container');
+            const index = type === 'less' ? lessRowIndex : addRowIndex;
+            
+            const newRow = document.createElement('div');
+            newRow.className = 'row mt-2 particular-row';
+            newRow.innerHTML = `
+                <div class="col-5 mb-2">
+                    <div class="form-floating">
+                        <input type="text" name="${type}_particulars[${index}][particular]" 
+                               class="form-control" placeholder="Particular">
+                        <label>Particular</label>
+                    </div>
+                </div>
+                <div class="col-5 mb-2">
+                    <div class="form-floating">
+                        <input type="number" name="${type}_particulars[${index}][amount]" 
+                               class="form-control ${type}-amount" placeholder="Amount" 
+                               onchange="calculateNetAmount()" step="0.01">
+                        <label>Amount (₹)</label>
+                    </div>
+                </div>
+                <div class="col-2 mb-2 d-flex align-items-center">
+                    <button type="button" class="btn btn-outline-danger btn-sm" 
+                            onclick="removeParticularRow(this)" title="Remove Row">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+            `;
+            
+            container.appendChild(newRow);
+            
+            if (type === 'less') {
+                lessRowIndex++;
+            } else {
+                addRowIndex++;
             }
+            
+            showNotification(`${type === 'less' ? 'Deduction' : 'Addition'} row added successfully!`, 'success');
+        }
 
-            // Attach event listeners
-            document.querySelectorAll(".less-amount, .add-amount").forEach(input => {
-                input.addEventListener("input", calculateNetPayable);
+        // Remove particular row
+        function removeParticularRow(button) {
+            const row = button.closest('.particular-row');
+            const container = row.parentNode;
+            
+            // Don't allow removing the last row
+            if (container.children.length <= 1) {
+                showNotification('At least one row is required!', 'warning');
+                return;
+            }
+            
+            if (confirm('Are you sure you want to remove this row?')) {
+                row.remove();
+                calculateNetAmount();
+                showNotification('Row removed successfully!', 'info');
+            }
+        }
+
+        // Calculate net amount
+        function calculateNetAmount() {
+            const grossAmountElement = document.getElementById('gross_amount');
+            const grossAmount = grossAmountElement ? parseFloat(grossAmountElement.value) || 0 : {{ $grossAmount ?? 0 }};
+
+            // Calculate total less amount
+            let totalLessAmount = 0;
+            document.querySelectorAll('.less-amount').forEach(input => {
+                totalLessAmount += parseFloat(input.value) || 0;
             });
 
-            // Initial Calculation
-            calculateNetPayable();
+            // Calculate total add amount
+            let totalAddAmount = 0;
+            document.querySelectorAll('.add-amount').forEach(input => {
+                totalAddAmount += parseFloat(input.value) || 0;
+            });
+
+            // Calculate net payable amount
+            const netAmount = grossAmount - totalLessAmount + totalAddAmount;
+            const netAmountRounded = Math.round(netAmount);
+
+            // Update display elements
+            updateElement('displayGrossAmount', formatCurrency(grossAmount));
+            updateElement('displayLessAmount', formatCurrency(totalLessAmount));
+            updateElement('displayAddAmount', formatCurrency(totalAddAmount));
+            updateElement('displayNetAmount', formatCurrency(netAmount));
+            updateElement('totalLessAmount', formatCurrency(totalLessAmount));
+            updateElement('totalAddAmount', formatCurrency(totalAddAmount));
+
+            // Update form fields
+            updateElement('net_payable_amount', netAmount.toFixed(2));
+            updateElement('net_payable_round_off', netAmountRounded.toFixed(2));
+        }
+
+        // Helper function to update element content
+        function updateElement(id, value) {
+            const element = document.getElementById(id);
+            if (element) {
+                if (element.tagName === 'INPUT') {
+                    element.value = value;
+                } else {
+                    element.textContent = value;
+                }
+            }
+        }
+
+        // Format currency for display
+        function formatCurrency(amount) {
+            return new Intl.NumberFormat('en-IN', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            }).format(amount);
+        }
+
+        // Show notification
+        function showNotification(message, type = 'info') {
+            const bgColor = type === 'success' ? 'bg-success' : type === 'warning' ? 'bg-warning' : type === 'error' ? 'bg-danger' : 'bg-info';
+            const icon = type === 'success' ? 'check-circle' : type === 'warning' ? 'exclamation-triangle' : type === 'error' ? 'x-circle' : 'info-circle';
+            
+            const notification = document.createElement('div');
+            notification.className = `alert alert-dismissible fade show position-fixed ${bgColor} text-white`;
+            notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+            notification.innerHTML = `
+                <div class="d-flex align-items-center">
+                    <i class="bi bi-${icon} me-2"></i>
+                    ${message}
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert"></button>
+            `;
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.remove();
+                }
+            }, 5000);
+        }
+
+        // Vendor Account Selection Handler
+        document.addEventListener('DOMContentLoaded', function() {
+            const vendorAccountSelect = document.getElementById("vendor_account_select");
+            if (vendorAccountSelect) {
+                vendorAccountSelect.addEventListener("change", function() {
+                    const selectedOption = this.selectedOptions[0];
+                    
+                    if (selectedOption && selectedOption.value) {
+                        // Update banking details fields
+                        const fields = {
+                            'account_holder_name': selectedOption.dataset.accountName,
+                            'bank_name': selectedOption.dataset.bankName,
+                            'account_number': selectedOption.dataset.accountNumber,
+                            'ifsc_code': selectedOption.dataset.ifscCode,
+                            'branch_name': selectedOption.dataset.branchName
+                        };
+                        
+                        Object.keys(fields).forEach(fieldId => {
+                            const field = document.getElementById(fieldId);
+                            if (field && fields[fieldId]) {
+                                field.value = fields[fieldId];
+                            }
+                        });
+                        
+                        showNotification('Banking details updated successfully!', 'success');
+                    }
+                });
+            }
         });
     </script>
     {{-- <script>

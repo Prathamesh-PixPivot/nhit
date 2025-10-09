@@ -119,7 +119,7 @@ class ReimbursementNoteController extends Controller
         }
 
         if ($request->ajax()) {
-            $query = $query->select('id', 'user_id', 'approver_id', 'status', 'created_at', 'project_id')
+            $query = $query->select('id', 'user_id', 'select_user_id', 'approver_id', 'status', 'created_at', 'project_id')
                 ->with(['project', 'selectUser', 'user', 'expenses']);
 
             return DataTables::eloquent($query)
@@ -186,11 +186,10 @@ class ReimbursementNoteController extends Controller
         $userId = session()->pull('selected_user_id'); // removes after using
         $user = $userId ? User::with('department', 'designation')->findOrFail($userId) : auth()->user();
 
-        // $users = User::role('ER Approver')->get();
-        $users = User::role('ER Approver')
+        // Get users with approval roles safely
+        $users = \App\Services\RoleService::getUsersWithRoles(['ER Approver', 'approver', 'reviewer'])
             ->where('active', 'Y')
-            ->where('id', '!=', auth()->id())
-            ->get();
+            ->where('id', '!=', auth()->id());
 
         return view('backend.reimbursementNote.create', compact('user', 'orderNumber', 'filteredItems', 'departments', 'filteredVendorItems', 'users'));
     }
@@ -298,10 +297,9 @@ class ReimbursementNoteController extends Controller
         $filteredVendorItems = Vendor::where('active', 'Y')->get();
         $departments = Department::all();
         $user = Auth::user();
-        // $users = User::role('ER Approver')->get();
-        $users = User::role('ER Approver')
-            ->where('id', '!=', auth()->id())
-            ->get();
+        // Get users with approval roles safely
+        $users = \App\Services\RoleService::getUsersWithRoles(['ER Approver', 'approver', 'reviewer'])
+            ->where('id', '!=', auth()->id());
         $note = ReimbursementNote::with('expenses')->findOrFail($id);
         return view('backend.reimbursementNote.edit', compact('note', 'user', 'filteredItems', 'departments', 'filteredVendorItems', 'users'));
     }

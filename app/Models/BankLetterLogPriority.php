@@ -3,13 +3,21 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\Pivot;
+use App\Traits\UsesOrganizationDatabase;
 
 class BankLetterLogPriority extends Pivot
 {
-    use HasFactory;
+    use HasFactory, UsesOrganizationDatabase;
+    
+    /**
+     * The connection name for the model.
+     * Uses organization database
+     *
+     * @var string
+     */
+    protected $connection = 'organization';
 
     protected $table = 'bank_letter_log_priority';
 

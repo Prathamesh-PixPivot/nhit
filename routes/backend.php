@@ -27,6 +27,7 @@ use App\Http\Controllers\Backend\SupportingDoc\SupportingDocController;
 use App\Http\Controllers\Backend\Ticket\TicketCommentController;
 use App\Http\Controllers\Backend\Ticket\TicketController;
 use App\Http\Controllers\CommentController;
+use App\Http\Controllers\OrganizationController;
 use Illuminate\Support\Facades\Route;
 
 // Auth::routes();
@@ -43,7 +44,7 @@ Route::group(['prefix' => 'backend', 'as' => 'backend.'], function () {
     });
 
     // , 'prevent-back-history', 'secure_headers'
-    Route::group(['middleware' => ['auth', 'throttle:30,1']], function () {
+    Route::group(['middleware' => ['auth', 'throttle:30,1', 'organization.context']], function () {
         Route::controller(ActivityController::class)
             ->prefix('activity')
             ->name('activity.')
@@ -576,6 +577,88 @@ Route::group(['prefix' => 'backend', 'as' => 'backend.'], function () {
                 Route::put('/{vendor}', 'update')->name('update');
                 // deletes a vendor
                 Route::delete('/{vendor}', 'destroy')->name('destroy');
+            });
+
+        // Organization management routes
+        Route::controller(OrganizationController::class)
+            ->prefix('organizations')
+            ->name('organizations.')
+            ->group(function () {
+                // Organization switching routes (accessible by all authenticated users)
+                Route::post('/switch', 'switch')->name('switch');
+                Route::get('/current', 'getCurrentOrganizations')->name('current');
+                
+                // Debug route for testing
+                Route::get('/debug-switch/{id}', function($id) {
+                    try {
+                        $user = auth()->user();
+                        \Log::info("Debug switch: User {$user->id} switching to org {$id}");
+                        
+                        $result = $user->switchToOrganization($id);
+                        
+                        return response()->json([
+                            'success' => $result,
+                            'user_id' => $user->id,
+                            'current_org_id' => $user->current_organization_id,
+                            'logs' => 'Check storage/logs/laravel.log for detailed logs'
+                        ]);
+                    } catch (\Exception $e) {
+                        \Log::error("Debug switch error: " . $e->getMessage());
+                        return response()->json([
+                            'success' => false,
+                            'error' => $e->getMessage(),
+                            'trace' => $e->getTraceAsString()
+                        ], 500);
+                    }
+                })->name('debug-switch');
+                
+                // Test migration directly
+                Route::get('/test-migration/{id}', function($id) {
+                    try {
+                        $user = auth()->user();
+                        $org = \App\Models\Organization::on('mysql')->find($id);
+                        
+                        if (!$org) {
+                            return response()->json(['error' => 'Organization not found'], 404);
+                        }
+                        
+                        \Log::info("Testing migration to: {$org->database_name}");
+                        
+                        // Test database connection
+                        config(['database.connections.organization.database' => $org->database_name]);
+                        \DB::purge('organization');
+                        \DB::reconnect('organization');
+                        
+                        $canConnect = \DB::connection('organization')->getPdo() ? true : false;
+                        $userExists = \DB::connection('organization')->table('users')->where('email', $user->email)->exists();
+                        
+                        return response()->json([
+                            'organization' => $org->name,
+                            'database' => $org->database_name,
+                            'can_connect' => $canConnect,
+                            'user_exists' => $userExists,
+                            'user_email' => $user->email
+                        ]);
+                        
+                    } catch (\Exception $e) {
+                        return response()->json([
+                            'error' => $e->getMessage(),
+                            'trace' => $e->getTraceAsString()
+                        ], 500);
+                    }
+                })->name('test-migration');
+                
+                // Organization management routes (SuperAdmin only)
+                Route::middleware('role:superadmin')->group(function () {
+                    Route::get('/', 'index')->name('index');
+                    Route::get('/create', 'create')->name('create');
+                    Route::post('/', 'store')->name('store');
+                    Route::get('/{organization}', 'show')->name('show');
+                    Route::get('/{organization}/edit', 'edit')->name('edit');
+                    Route::put('/{organization}', 'update')->name('update');
+                    Route::delete('/{organization}', 'destroy')->name('destroy');
+                    Route::patch('/{organization}/toggle-status', 'toggleStatus')->name('toggle-status');
+                });
             });
     });
 });

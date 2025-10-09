@@ -114,7 +114,7 @@ class GreenNoteController extends Controller
 
         // Server-side DataTables
         if (request()->ajax()) {
-            $query = $query->select('id', 'user_id', 'status', 'created_at', 'vendor_id')
+            $query = $query->select('id', 'user_id', 'status', 'created_at', 'vendor_id', 'supplier_id', 'invoice_value')
                 ->with(['vendor', 'supplier', 'approvalLogs.approvalStep.nextOnApprove', 'paymentNotes.paymentApprovalLogs']);
 
             return DataTables::eloquent($query)
@@ -266,6 +266,44 @@ class GreenNoteController extends Controller
             return back()
                 ->withErrors(['invoice_value' => 'Invoice value cannot be greater than the total amount.'])
                 ->withInput();
+        }
+
+        // Handle multiple invoices if enabled
+        if ($request->has('enable_multiple_invoices') && $request->enable_multiple_invoices) {
+            $invoices = [];
+            if ($request->has('invoices') && is_array($request->invoices)) {
+                foreach ($request->invoices as $invoice) {
+                    if (!empty($invoice['invoice_number']) && !empty($invoice['invoice_date'])) {
+                        $invoices[] = [
+                            'invoice_number' => $invoice['invoice_number'],
+                            'invoice_date' => $invoice['invoice_date'],
+                            'invoice_base_value' => (float) ($invoice['invoice_base_value'] ?? 0),
+                            'invoice_gst' => (float) ($invoice['invoice_gst'] ?? 0),
+                            'invoice_other_charges' => (float) ($invoice['invoice_other_charges'] ?? 0),
+                            'invoice_value' => (float) ($invoice['invoice_value'] ?? 0),
+                        ];
+                    }
+                }
+            }
+
+            if (empty($invoices)) {
+                return back()
+                    ->withErrors(['invoices' => 'At least one invoice entry is required when multiple invoices are enabled.'])
+                    ->withInput();
+            }
+
+            $validated['invoices'] = $invoices;
+
+            // Calculate totals from multiple invoices
+            $totalInvoiceValue = array_sum(array_column($invoices, 'invoice_value'));
+            $totalBaseValue = array_sum(array_column($invoices, 'invoice_base_value'));
+            $totalGST = array_sum(array_column($invoices, 'invoice_gst'));
+            $totalOtherCharges = array_sum(array_column($invoices, 'invoice_other_charges'));
+
+            $validated['invoice_value'] = $totalInvoiceValue;
+            $validated['invoice_base_value'] = $totalBaseValue;
+            $validated['invoice_gst'] = $totalGST;
+            $validated['invoice_other_charges'] = $totalOtherCharges;
         }
 
         // Saving the file (if exists)
@@ -720,10 +758,15 @@ class GreenNoteController extends Controller
         $filteredItems = Vendor::selectRaw('id,project, COUNT(*) as total_records')->whereNotNull('project')->where('project', '!=', '')->groupBy('project')->orderBy('project', 'asc')->where('active', 'Y')->get();
         $filteredVendorItems = Vendor::where('active', 'Y')->get();
         $departments = Department::all();
-        $users = User::role('GN Approver')->where('active', 'Y')->get();
-        $adminHrUsers = User::role('Hr And Admin')->where('active', 'Y')->get();
-        $auditorUsers = User::role('Auditor')->where('active', 'Y')->get();
-        $qsUsers = User::role('Qs')->where('active', 'Y')->get();
+        // Get users with various approval roles safely
+        $users = \App\Services\RoleService::getUsersWithRoles(['GN Approver', 'approver', 'reviewer'])
+            ->where('active', 'Y');
+        $adminHrUsers = \App\Services\RoleService::getUsersWithRoles(['Hr And Admin', 'admin', 'hr'])
+            ->where('active', 'Y');
+        $auditorUsers = \App\Services\RoleService::getUsersWithRoles(['Auditor', 'auditor'])
+            ->where('active', 'Y');
+        $qsUsers = \App\Services\RoleService::getUsersWithRoles(['Qs', 'QS', 'quality', 'quality_assurance'])
+            ->where('active', 'Y');
         $approvalFlows = ApprovalFlow::with('approvalSteps')->get();
         $approvalSteps = ApprovalStep::all();
         $approvalLogs = ApprovalLog::all();
@@ -825,5 +868,158 @@ class GreenNoteController extends Controller
         $notes = $notesQuery->get();
 
         return Excel::download(new NoteExport($notes), 'note_export.xlsx');
+    }
+
+    /**
+     * Show form for adding multiple invoices to a green note
+     */
+    public function showMultipleInvoices(GreenNote $greenNote)
+    {
+        $this->authorize('update', $greenNote);
+        
+        return view('backend.green-note.multiple-invoices', compact('greenNote'));
+    }
+
+    /**
+     * Update green note with multiple invoices
+     */
+    public function updateMultipleInvoices(Request $request, GreenNote $greenNote)
+    {
+        $this->authorize('update', $greenNote);
+
+        $request->validate([
+            'invoices' => 'required|array|min:1',
+            'invoices.*.invoice_number' => 'required|string|max:255',
+            'invoices.*.invoice_date' => 'required|date',
+            'invoices.*.invoice_value' => 'required|numeric|min:0',
+            'invoices.*.invoice_base_value' => 'nullable|numeric|min:0',
+            'invoices.*.invoice_gst' => 'nullable|numeric|min:0',
+            'invoices.*.invoice_other_charges' => 'nullable|numeric|min:0',
+            'invoices.*.description' => 'nullable|string|max:500',
+        ]);
+
+        try {
+            $greenNoteService = new \App\Services\GreenNoteService();
+            $greenNoteService->updateInvoices($greenNote, $request->invoices);
+
+            return redirect()
+                ->route('backend.green-note.show', $greenNote)
+                ->with('success', 'Multiple invoices updated successfully.');
+
+        } catch (\Exception $e) {
+            return back()
+                ->withInput()
+                ->withErrors(['error' => 'Failed to update invoices: ' . $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Put green note on hold
+     */
+    public function putOnHold(Request $request, GreenNote $greenNote)
+    {
+        $this->authorize('update', $greenNote);
+
+        $request->validate([
+            'hold_reason' => 'required|string|max:1000',
+        ]);
+
+        try {
+            $greenNoteService = new \App\Services\GreenNoteService();
+            $greenNoteService->putOnHold($greenNote, $request->hold_reason, auth()->user());
+
+            return back()->with('success', 'Green note put on hold successfully.');
+
+        } catch (\Exception $e) {
+            return back()->withErrors(['error' => 'Failed to put note on hold: ' . $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Remove green note from hold
+     */
+    public function removeFromHold(Request $request, GreenNote $greenNote)
+    {
+        $this->authorize('update', $greenNote);
+
+        $request->validate([
+            'new_status' => 'required|in:P,D,S',
+        ]);
+
+        try {
+            $greenNoteService = new \App\Services\GreenNoteService();
+            $greenNoteService->removeFromHold($greenNote, auth()->user(), $request->new_status);
+
+            return back()->with('success', 'Green note removed from hold successfully.');
+
+        } catch (\Exception $e) {
+            return back()->withErrors(['error' => 'Failed to remove note from hold: ' . $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Get invoice summary for AJAX requests
+     */
+    public function getInvoiceSummary(GreenNote $greenNote)
+    {
+        try {
+            $greenNoteService = new \App\Services\GreenNoteService();
+            $summary = $greenNoteService->getInvoiceSummary($greenNote);
+
+            return response()->json([
+                'success' => true,
+                'data' => $summary
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to get invoice summary: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Approve green note and auto-create payment note draft
+     */
+    public function approveWithPaymentNote(Request $request, GreenNote $greenNote)
+    {
+        $this->authorize('approve', $greenNote);
+
+        $request->validate([
+            'comments' => 'nullable|string|max:1000',
+        ]);
+
+        try {
+            $greenNoteService = new \App\Services\GreenNoteService();
+            $result = $greenNoteService->approveGreenNote($greenNote, auth()->user(), $request->comments);
+
+            return redirect()
+                ->route('backend.green-note.show', $greenNote)
+                ->with('success', 'Green note approved and draft payment note created successfully.')
+                ->with('payment_note_id', $result['paymentNote']->id);
+
+        } catch (\Exception $e) {
+            return back()->withErrors(['error' => 'Failed to approve note: ' . $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Create payment note from green note
+     */
+    public function createPaymentNote(GreenNote $greenNote)
+    {
+        $this->authorize('view', $greenNote);
+
+        // Generate payment note order number
+        $orderNumber = PaymentNote::generateOrderNumber();
+
+        // Calculate gross amount from green note
+        $grossAmount = ($greenNote->invoice_base_value ?? 0) + ($greenNote->invoice_gst ?? 0) + ($greenNote->invoice_other_charges ?? 0);
+
+        // Get supporting documents
+        $documents = SupportingDoc::where('green_note_id', $greenNote->id)->get();
+
+        return view('backend.paymentNote.create', compact('greenNote', 'orderNumber', 'grossAmount', 'documents'));
     }
 }

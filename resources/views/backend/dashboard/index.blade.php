@@ -3,61 +3,70 @@
 @section('title', 'Dashboard')
 
 @section('content')
-    <section class="section dashboard">
-        <!-- Welcome Header -->
+<div class="modern-container">
+    <!-- Modern Dashboard Header -->
+    <div class="modern-header">
+        <div class="d-flex justify-content-between align-items-start">
+            <div>
+                <h1 class="modern-page-title">
+                    <i class="bi bi-speedometer2 text-primary me-3"></i>Welcome back, {{ Auth::user()->name }}!
+                </h1>
+                <p class="modern-page-subtitle">Here's what's happening with your expense management today</p>
+            </div>
+            <div class="d-flex gap-3">
+                <div class="dropdown">
+                    <button class="btn btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                        <i class="bi bi-calendar me-1"></i>{{ date('M Y') }}
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="#">Current Month</a></li>
+                        <li><a class="dropdown-item" href="#">Last Month</a></li>
+                        <li><a class="dropdown-item" href="#">Last 3 Months</a></li>
+                    </ul>
+                </div>
+                <button class="btn btn-primary">
+                    <i class="bi bi-download me-1"></i>Export Report
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modern-content">
+        <!-- KPI Cards Row -->
         <div class="row mb-4">
-            <div class="col-12">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <h2 class="fw-bold text-primary mb-1">
-                            <i class="bi bi-speedometer2 me-2"></i>Welcome back, {{ Auth::user()->name }}!
-                        </h2>
-                        <p class="text-muted mb-0">Here's what's happening with your notes today</p>
-                    </div>
-                    <div class="d-flex gap-2">
-                        <div class="dropdown">
-                            <button class="btn btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                                <i class="bi bi-calendar me-1"></i>{{ date('M Y') }}
-                            </button>
-                            <ul class="dropdown-menu">
-                                <li><a class="dropdown-item" href="#">Current Month</a></li>
-                                <li><a class="dropdown-item" href="#">Last Month</a></li>
-                                <li><a class="dropdown-item" href="#">Last 3 Months</a></li>
-                            </ul>
+        <!-- Total Notes KPI -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body text-center p-4">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div class="bg-primary bg-opacity-10 p-3 rounded-3">
+                            <i class="bi bi-file-earmark-text text-white fs-4"></i>
                         </div>
-                        <button class="btn btn-primary">
-                            <i class="bi bi-download me-1"></i>Export Report
-                        </button>
+                        <span class="badge bg-success bg-opacity-10 text-white px-3 py-2">
+                            @php
+                                $tillSum = collect($dataTill ?? [])->sum('value');
+                                $currentSum = collect($dataCurrent ?? [])->sum('value');
+                                $badgePercentage = $tillSum > 0 ? round(($currentSum / $tillSum) * 100, 1) : 0;
+                            @endphp
+                            +{{ $badgePercentage }}%
+                        </span>
                     </div>
+                    <h3 class="fw-bold text-primary mb-2">
+                        {{ number_format(collect($dataTill ?? [])->sum('value'), 0) }}
+                    </h3>
+                    <p class="text-muted mb-1">Total Notes</p>
+                    <small class="text-success">
+                        <i class="bi bi-arrow-up"></i>
+                        @php
+                            $tillSum = collect($dataTill ?? [])->sum('value');
+                            $currentSum = collect($dataCurrent ?? [])->sum('value');
+                            $percentage = $tillSum > 0 ? round(($currentSum / $tillSum) * 100, 1) : 0;
+                        @endphp
+                        +{{ $percentage }}% from last month
+                    </small>
                 </div>
             </div>
         </div>
-
-        <!-- KPI Cards Row -->
-        <div class="row mb-4">
-            <!-- Total Notes KPI -->
-            <div class="col-xl-3 col-md-6 mb-4">
-                <div class="card border-0 shadow-sm h-100 hover-card">
-                    <div class="card-body text-center p-4">
-                        <div class="d-flex justify-content-between align-items-start mb-3">
-                            <div class="bg-primary bg-opacity-10 p-3 rounded-3">
-                                <i class="bi bi-file-earmark-text text-primary fs-4"></i>
-                            </div>
-                            <span class="badge bg-success bg-opacity-10 text-success px-3 py-2 fs-6">
-                                +{{ collect($dataTill ?? [])->sum('value') > 0 ? number_format(min((collect($dataCurrent ?? [])->sum('value') / collect($dataTill ?? [])->sum('value')) * 100, 999), 1) : 0 }}%
-                            </span>
-                        </div>
-                        <h3 class="fw-bold text-primary mb-2">
-                            {{ number_format(max(collect($dataTill ?? [])->sum('value'), 0), 0) }}</h3>
-                        <p class="text-muted mb-1">Total Notes</p>
-                        <small class="text-success">
-                            <i class="bi bi-arrow-up"></i>
-                            +{{ collect($dataTill ?? [])->sum('value') > 0 ? number_format(min((collect($dataCurrent ?? [])->sum('value') / collect($dataTill ?? [])->sum('value')) * 100, 999), 1) : 0 }}%
-                            from last month
-                        </small>
-                    </div>
-                </div>
-            </div>
 
             <!-- Pending Approvals KPI -->
             <div class="col-xl-3 col-md-6 mb-4">
@@ -65,14 +74,19 @@
                     <div class="card-body text-center p-4">
                         <div class="d-flex justify-content-between align-items-start mb-3">
                             <div class="bg-warning bg-opacity-10 p-3 rounded-3">
-                                <i class="bi bi-clock text-warning fs-4"></i>
+                                <i class="bi bi-clock text-white fs-4"></i>
                             </div>
-                            <span class="badge bg-danger bg-opacity-10 text-danger px-3 py-2 fs-6">
-                                {{ number_format(max(collect($userData ?? [])->where('payment_statuses', '!=', '-')->count() +collect($userData ?? [])->where('green_statuses', '!=', '-')->count() +collect($userData ?? [])->where('reimbursement_statuses', '!=', '-')->count(),0),0) }}
+                            <span class="badge bg-danger bg-opacity-10 text-white px-3 py-2 fs-6">
+                                @php
+                                    $pendingCount = collect($userData ?? [])->where('payment_statuses', '!=', '-')->count() + 
+                                                   collect($userData ?? [])->where('green_statuses', '!=', '-')->count() + 
+                                                   collect($userData ?? [])->where('reimbursement_statuses', '!=', '-')->count();
+                                @endphp
+                                {{ $pendingCount }}
                             </span>
                         </div>
                         <h3 class="fw-bold text-warning mb-2">
-                            {{ number_format(max(collect($userData ?? [])->where('payment_statuses', '!=', '-')->count() +collect($userData ?? [])->where('green_statuses', '!=', '-')->count() +collect($userData ?? [])->where('reimbursement_statuses', '!=', '-')->count(),0),0) }}
+                            {{ $pendingCount ?? 0 }}
                         </h3>
                         <p class="text-muted mb-1">Pending Approvals</p>
                         <small class="text-muted">Require your attention</small>
@@ -86,20 +100,28 @@
                     <div class="card-body text-center p-4">
                         <div class="d-flex justify-content-between align-items-start mb-3">
                             <div class="bg-success bg-opacity-10 p-3 rounded-3">
-                                <i class="bi bi-check-circle text-success fs-4"></i>
+                                <i class="bi bi-check-circle text-white fs-4"></i>
                             </div>
-                            <span class="badge bg-success bg-opacity-10 text-success px-3 py-2 fs-6">
-                                +{{ collect($dataTill ?? [])->where('name', 'Approved')->sum('value') > 0? number_format(min((collect($dataCurrent ?? [])->where('name', 'Approved')->sum('value') /collect($dataTill ?? [])->where('name', 'Approved')->sum('value')) *100,999),1): 0 }}%
+                            <span class="badge bg-success bg-opacity-10 text-white px-3 py-2 fs-6">
+                                @php
+                                    $approvedTill = collect($dataTill ?? [])->where('name', 'Approved')->sum('value');
+                                    $approvedCurrent = collect($dataCurrent ?? [])->where('name', 'Approved')->sum('value');
+                                    $completedPercentage = $approvedTill > 0 ? round(($approvedCurrent / $approvedTill) * 100, 1) : 0;
+                                @endphp
+                                +{{ $completedPercentage }}%
                             </span>
                         </div>
                         <h3 class="fw-bold text-success mb-2">
-                            {{ number_format(max(collect($dataCurrent ?? [])->where('name', 'Approved')->sum('value') +collect($dataCurrent ?? [])->where('name', 'Paid')->sum('value'),0),0) }}
+                            @php
+                                $completedCount = collect($dataCurrent ?? [])->where('name', 'Approved')->sum('value') + 
+                                                 collect($dataCurrent ?? [])->where('name', 'Paid')->sum('value');
+                            @endphp
+                            {{ number_format($completedCount, 0) }}
                         </h3>
                         <p class="text-muted mb-1">Completed This Month</p>
                         <small class="text-success">
                             <i class="bi bi-arrow-up"></i>
-                            +{{ collect($dataTill ?? [])->where('name', 'Approved')->sum('value') > 0? number_format(min((collect($dataCurrent ?? [])->where('name', 'Approved')->sum('value') /collect($dataTill ?? [])->where('name', 'Approved')->sum('value')) *100,999),1): 0 }}%
-                            vs last month
+                            +{{ $completedPercentage }}% vs last month
                         </small>
                     </div>
                 </div>
@@ -111,14 +133,20 @@
                     <div class="card-body text-center p-4">
                         <div class="d-flex justify-content-between align-items-start mb-3">
                             <div class="bg-info bg-opacity-10 p-3 rounded-3">
-                                <i class="bi bi-people text-info fs-4"></i>
+                                <i class="bi bi-people text-white fs-4"></i>
                             </div>
-                            <span class="badge bg-info bg-opacity-10 text-info px-3 py-2 fs-6">+3</span>
+                            <span class="badge bg-info bg-opacity-10 text-white px-3 py-2 fs-6">
+                                @php
+                                    $activeUsers = count($userData ?? []);
+                                    $newUsers = 3; // This should come from a weekly user count query
+                                @endphp
+                                +{{ $newUsers }}
+                            </span>
                         </div>
-                        <h3 class="fw-bold text-info mb-2">{{ number_format(max(count($userData ?? []), 0), 0) }}</h3>
+                        <h3 class="fw-bold text-info mb-2">{{ $activeUsers }}</h3>
                         <p class="text-muted mb-1">Active Users</p>
                         <small class="text-info">
-                            <i class="bi bi-arrow-up"></i> +3 new this week
+                            <i class="bi bi-arrow-up"></i> +{{ $newUsers }} new this week
                         </small>
                     </div>
                 </div>
@@ -219,40 +247,44 @@
             </div>
         </div>
 
-        <!-- Main Content Area -->
+        <!-- Modern All Notes Overview -->
         <div class="row">
-            <!-- All Notes Table -->
             <div class="col-12">
-                <div class="card border-0 shadow-sm">
-                    <div class="card-header bg-white border-0 d-flex justify-content-between align-items-center py-3">
-                        <h5 class="card-title mb-0">
-                            <i class="bi bi-table text-primary me-2"></i>All Notes Overview
-                        </h5>
-                        @can(['export-excel-note'])
-                            <form method="GET" action="{{ route('backend.note.export.note.excel') }}"
-                                class="d-flex gap-2">
-                                <input type="date" class="form-control" name="start_date"
-                                    value="{{ request('start_date') }}" placeholder="Start Date">
-                                <input type="date" class="form-control" name="end_date"
-                                    value="{{ request('end_date') }}" placeholder="End Date">
-                                <button type="submit" class="btn btn-success">
-                                    <i class="bi bi-file-earmark-arrow-down-fill me-1"></i>Export Excel
-                                </button>
-                            </form>
-                        @endcan
+                <div class="modern-card">
+                    <div class="modern-card-header">
+                        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+                            <div>
+                                <h3 class="mb-1">
+                                    <i class="bi bi-table text-primary me-2"></i>All Notes Overview
+                                </h3>
+                                <p class="text-muted mb-0 small">Track all notes across users and departments</p>
+                            </div>
+                            @can(['export-excel-note'])
+                                <form method="GET" action="{{ route('backend.note.export.note.excel') }}"
+                                    class="d-flex gap-2 align-items-center">
+                                    <input type="date" class="form-control form-control-sm" name="start_date"
+                                        value="{{ request('start_date') }}" placeholder="Start Date">
+                                    <input type="date" class="form-control form-control-sm" name="end_date"
+                                        value="{{ request('end_date') }}" placeholder="End Date">
+                                    <button type="submit" class="btn btn-success btn-sm">
+                                        <i class="bi bi-file-earmark-arrow-down me-1"></i>Export
+                                    </button>
+                                </form>
+                            @endcan
+                        </div>
                     </div>
-                    <div class="card-body p-0">
+                    <div class="modern-card-body p-0">
                         <div class="table-responsive">
-                            <table class="table table-hover mb-0">
-                                <thead class="table-light">
+                            <table class="modern-table mb-0">
+                                <thead>
                                     <tr>
-                                        <th>#</th>
-                                        <th>Name</th>
-                                        <th>Green Note</th>
-                                        <th>Payment Note</th>
-                                        <th>Reimbursement Note</th>
-                                        <th>Bank Letter Note</th>
-                                        <th>Actions</th>
+                                        <th width="5%">#</th>
+                                        <th width="20%">User</th>
+                                        <th width="15%">Expense Notes</th>
+                                        <th width="15%">Payment Notes</th>
+                                        <th width="15%">Reimbursement</th>
+                                        <th width="15%">Bank Letters</th>
+                                        <th width="15%">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -269,82 +301,110 @@
                                                 </div>
                                             </td>
                                             <td>
-                                                <span class="badge bg-success bg-opacity-10 text-success">
-                                                    {{ $item['green_statuses'] ?: '-' }}
-                                                </span>
-                                                @if ($item['id'] == auth()->id() && !empty($item['green_ids']))
-                                                    <form action="{{ route('backend.dashboard.user.green.notes') }}"
-                                                        method="POST" id="greenNoteForm-{{ $item['id'] }}"
-                                                        class="d-inline">
-                                                        @csrf
-                                                        <input type="hidden" name="ids"
-                                                            value="{{ implode(',', $item['green_ids']) }}">
-                                                        <button type="submit"
-                                                            class="btn btn-sm btn-outline-primary ms-1">
-                                                            <i class="bi bi-arrow-right"></i>
-                                                        </button>
-                                                    </form>
-                                                @endif
+                                                <div class="d-flex align-items-center gap-2">
+                                                    @if($item['green_statuses'] && $item['green_statuses'] !== '-')
+                                                        <span class="modern-badge modern-badge-success">
+                                                            <i class="bi bi-circle-fill me-1" style="font-size: 0.5rem;"></i>
+                                                            {{ $item['green_statuses'] }}
+                                                        </span>
+                                                    @else
+                                                        <span class="text-muted small">No notes</span>
+                                                    @endif
+                                                    @if ($item['id'] == auth()->id() && !empty($item['green_ids']))
+                                                        <form action="{{ route('backend.dashboard.user.green.notes') }}"
+                                                            method="POST" id="greenNoteForm-{{ $item['id'] }}"
+                                                            class="d-inline">
+                                                            @csrf
+                                                            <input type="hidden" name="ids"
+                                                                value="{{ implode(',', $item['green_ids']) }}">
+                                                            <button type="submit"
+                                                                class="btn btn-sm btn-outline-primary">
+                                                                <i class="bi bi-arrow-right"></i>
+                                                            </button>
+                                                        </form>
+                                                    @endif
+                                                </div>
                                             </td>
                                             <td>
-                                                <span class="badge bg-info bg-opacity-10 text-info">
-                                                    {{ $item['payment_statuses'] ?: '-' }}
-                                                </span>
-                                                @if ($item['id'] == auth()->id() && !empty($item['payment_ids']))
-                                                    <form action="{{ route('backend.dashboard.user.payment.notes') }}"
-                                                        method="POST" id="paymentNoteForm-{{ $item['id'] }}"
-                                                        class="d-inline">
-                                                        @csrf
-                                                        <input type="hidden" name="ids"
-                                                            value="{{ implode(',', $item['payment_ids']) }}">
-                                                        <button type="submit"
-                                                            class="btn btn-sm btn-outline-primary ms-1">
-                                                            <i class="bi bi-arrow-right"></i>
-                                                        </button>
-                                                    </form>
-                                                @endif
+                                                <div class="d-flex align-items-center gap-2">
+                                                    @if($item['payment_statuses'] && $item['payment_statuses'] !== '-')
+                                                        <span class="modern-badge modern-badge-info">
+                                                            <i class="bi bi-circle-fill me-1" style="font-size: 0.5rem;"></i>
+                                                            {{ $item['payment_statuses'] }}
+                                                        </span>
+                                                    @else
+                                                        <span class="text-muted small">No notes</span>
+                                                    @endif
+                                                    @if ($item['id'] == auth()->id() && !empty($item['payment_ids']))
+                                                        <form action="{{ route('backend.dashboard.user.payment.notes') }}"
+                                                            method="POST" id="paymentNoteForm-{{ $item['id'] }}"
+                                                            class="d-inline">
+                                                            @csrf
+                                                            <input type="hidden" name="ids"
+                                                                value="{{ implode(',', $item['payment_ids']) }}">
+                                                            <button type="submit"
+                                                                class="btn btn-sm btn-outline-primary">
+                                                                <i class="bi bi-arrow-right"></i>
+                                                            </button>
+                                                        </form>
+                                                    @endif
+                                                </div>
                                             </td>
                                             <td>
-                                                <span class="badge bg-warning bg-opacity-10 text-warning">
-                                                    {{ $item['reimbursement_statuses'] ?: '-' }}
-                                                </span>
-                                                @if ($item['id'] == auth()->id() && !empty($item['reimbursement_ids']))
-                                                    <form
-                                                        action="{{ route('backend.dashboard.user.reimbursement.notes') }}"
-                                                        method="POST" id="reimbursementNoteForm-{{ $item['id'] }}"
-                                                        class="d-inline">
-                                                        @csrf
-                                                        <input type="hidden" name="ids"
-                                                            value="{{ implode(',', $item['reimbursement_ids']) }}">
-                                                        <button type="submit"
-                                                            class="btn btn-sm btn-outline-primary ms-1">
-                                                            <i class="bi bi-arrow-right"></i>
-                                                        </button>
-                                                    </form>
-                                                @endif
+                                                <div class="d-flex align-items-center gap-2">
+                                                    @if($item['reimbursement_statuses'] && $item['reimbursement_statuses'] !== '-')
+                                                        <span class="modern-badge modern-badge-warning">
+                                                            <i class="bi bi-circle-fill me-1" style="font-size: 0.5rem;"></i>
+                                                            {{ $item['reimbursement_statuses'] }}
+                                                        </span>
+                                                    @else
+                                                        <span class="text-muted small">No notes</span>
+                                                    @endif
+                                                    @if ($item['id'] == auth()->id() && !empty($item['reimbursement_ids']))
+                                                        <form
+                                                            action="{{ route('backend.dashboard.user.reimbursement.notes') }}"
+                                                            method="POST" id="reimbursementNoteForm-{{ $item['id'] }}"
+                                                            class="d-inline">
+                                                            @csrf
+                                                            <input type="hidden" name="ids"
+                                                                value="{{ implode(',', $item['reimbursement_ids']) }}">
+                                                            <button type="submit"
+                                                                class="btn btn-sm btn-outline-primary">
+                                                                <i class="bi bi-arrow-right"></i>
+                                                            </button>
+                                                        </form>
+                                                    @endif
+                                                </div>
                                             </td>
                                             <td>
-                                                <span class="badge bg-secondary bg-opacity-10 text-secondary">
-                                                    {{ $item['bankLetter_statuses'] ?: '-' }}
-                                                </span>
-                                                @if ($item['id'] == auth()->id() && !empty($item['bankLetter_ids']))
-                                                    <form action="{{ route('backend.dashboard.user.bank.letter.notes') }}"
-                                                        method="POST" id="bankLetterNoteForm-{{ $item['id'] }}"
-                                                        class="d-inline">
-                                                        @csrf
-                                                        <input type="hidden" name="ids"
-                                                            value="{{ implode(',', $item['bankLetter_ids']) }}">
-                                                        <button type="submit"
-                                                            class="btn btn-sm btn-outline-primary ms-1">
-                                                            <i class="bi bi-arrow-right"></i>
-                                                        </button>
-                                                    </form>
-                                                @endif
+                                                <div class="d-flex align-items-center gap-2">
+                                                    @if($item['bankLetter_statuses'] && $item['bankLetter_statuses'] !== '-')
+                                                        <span class="modern-badge modern-badge-secondary">
+                                                            <i class="bi bi-circle-fill me-1" style="font-size: 0.5rem;"></i>
+                                                            {{ $item['bankLetter_statuses'] }}
+                                                        </span>
+                                                    @else
+                                                        <span class="text-muted small">No notes</span>
+                                                    @endif
+                                                    @if ($item['id'] == auth()->id() && !empty($item['bankLetter_ids']))
+                                                        <form action="{{ route('backend.dashboard.user.bank.letter.notes') }}"
+                                                            method="POST" id="bankLetterNoteForm-{{ $item['id'] }}"
+                                                            class="d-inline">
+                                                            @csrf
+                                                            <input type="hidden" name="ids"
+                                                                value="{{ implode(',', $item['bankLetter_ids']) }}">
+                                                            <button type="submit"
+                                                                class="btn btn-sm btn-outline-primary">
+                                                                <i class="bi bi-arrow-right"></i>
+                                                            </button>
+                                                        </form>
+                                                    @endif
+                                                </div>
                                             </td>
                                             <td>
                                                 <a href="{{ route('backend.dashboard.filter', ['id' => $item['id']]) }}"
-                                                    class="btn btn-sm btn-outline-primary">
-                                                    <i class="bi bi-eye"></i> View
+                                                    class="btn btn-sm btn-primary">
+                                                    <i class="bi bi-eye me-1"></i>View Details
                                                 </a>
                                             </td>
                                         </tr>
@@ -620,4 +680,6 @@
             });
         </script>
     @endif
+    </div> <!-- Close modern-content -->
+</div> <!-- Close modern-container -->
 @endsection

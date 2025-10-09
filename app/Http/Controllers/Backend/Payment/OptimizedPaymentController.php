@@ -71,7 +71,13 @@ class OptimizedPaymentController extends Controller
         $status = $request->status ?? 'S';
 
         // Cache user permissions
-        $isAdmin = $userId == 1 || $userRoles->contains('PN User') || $userRoles->contains('PN Approver');
+        // Check if user has payment-related roles
+        $isAdmin = $userId == 1 || 
+            $userRoles->contains('PN User') || 
+            $userRoles->contains('PN Approver') ||
+            $userRoles->contains('approver') ||
+            $userRoles->contains('admin') ||
+            $userRoles->contains('superadmin');
         
         if ($isAdmin) {
             $sl_no_filter = $this->getAdminSlNos($status);

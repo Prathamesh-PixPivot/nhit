@@ -18,6 +18,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
+use App\Services\RoleService;
 use Yajra\DataTables\Contracts\DataTable;
 use Yajra\DataTables\Facades\DataTables;
 use Illuminate\Support\Collection;
@@ -584,7 +585,8 @@ class DashboardController extends Controller
 
     private function getUserApprovalData(): array
     {
-        $users = User::role(['GN Approver', 'ER Approver', 'PN Approver', 'QS'])->get();
+        // Use dynamic role service to get users with approval roles
+        $users = \App\Services\RoleService::getUsersWithApprovalRoles();
 
         $statusLabels = [
             'S' => 'Pending for Approval',
@@ -821,6 +823,11 @@ class DashboardController extends Controller
         $endOfMonth = Carbon::now()->endOfMonth();
 
         $userRoles = auth()->user()->getRoleNames();
+        
+        // Get current organization for cache key specificity
+        $currentOrg = auth()->user()->currentOrganization();
+        $orgId = $currentOrg ? $currentOrg->id : 'default';
+        
         $initialCounts = [
             'Draft' => 0,
             'Pending for Approval' => 0,
@@ -852,28 +859,28 @@ class DashboardController extends Controller
             $userRoles->contains('PN User') ||
             auth()->user()->hasAnyPermission(['all-reimbursement-note', 'all-note', 'all-payment-note'])
         ) {
-            $allData = Cache::remember("dash_admin_gn_all", 180, fn () => $this->getGreenNoteCounts($initialCounts));
-            $monthlyData = Cache::remember("dash_admin_gn_month_" . now()->format('Y-m'), 180, fn () => $this->getGreenNoteCounts($initialCounts, $startOfMonth, $endOfMonth));
+            $allData = Cache::remember("dash_admin_org_{$orgId}_gn_all", 180, fn () => $this->getGreenNoteCounts($initialCounts));
+            $monthlyData = Cache::remember("dash_admin_org_{$orgId}_gn_month_" . now()->format('Y-m'), 180, fn () => $this->getGreenNoteCounts($initialCounts, $startOfMonth, $endOfMonth));
 
-            $tillDateReimbursementData = Cache::remember("dash_admin_reim_all", 180, fn () => $this->getChunkedReimbursementCounts(null, null, $statusList, null));
-            $monthlyReimbursementData = Cache::remember("dash_admin_reim_month_" . now()->format('Y-m'), 180, fn () => $this->getChunkedReimbursementCounts($startOfMonth, $endOfMonth, $statusList, null));
+            $tillDateReimbursementData = Cache::remember("dash_admin_org_{$orgId}_reim_all", 180, fn () => $this->getChunkedReimbursementCounts(null, null, $statusList, null));
+            $monthlyReimbursementData = Cache::remember("dash_admin_org_{$orgId}_reim_month_" . now()->format('Y-m'), 180, fn () => $this->getChunkedReimbursementCounts($startOfMonth, $endOfMonth, $statusList, null));
 
-            $currentMonthPaymentCounts = Cache::remember("dash_admin_pay_counts_month_" . now()->format('Y-m'), 180, fn () => $this->aggregateChunkedStatusCounts(PaymentNote::with('paymentApprovalLogs.logPriorities.priority')->whereBetween('created_at', [$startOfMonth, $endOfMonth])));
+            $currentMonthPaymentCounts = Cache::remember("dash_admin_org_{$orgId}_pay_counts_month_" . now()->format('Y-m'), 180, fn () => $this->aggregateChunkedStatusCounts(PaymentNote::with('paymentApprovalLogs.logPriorities.priority')->whereBetween('created_at', [$startOfMonth, $endOfMonth])));
 
-            $tillDatePaymentCounts = Cache::remember("dash_admin_pay_counts_all", 180, fn () => $this->aggregateChunkedStatusCounts(PaymentNote::with('paymentApprovalLogs.logPriorities.priority')));
+            $tillDatePaymentCounts = Cache::remember("dash_admin_org_{$orgId}_pay_counts_all", 180, fn () => $this->aggregateChunkedStatusCounts(PaymentNote::with('paymentApprovalLogs.logPriorities.priority')));
 
-            $bankCounts = Cache::remember("dash_admin_bank_counts_" . now()->format('Y-m'), 180, fn () => $this->getBankLetterStatusAdminCounts());
+            $bankCounts = Cache::remember("dash_admin_org_{$orgId}_bank_counts_" . now()->format('Y-m'), 180, fn () => $this->getBankLetterStatusAdminCounts());
 
             $tillPaymentDateData = $bankCounts['till_date'];
             $currentPaymentMonthData = $bankCounts['current_month'];
         } else {
-            $allData = Cache::remember("dash_user_{$authId}_gn_all", 180, fn () => $this->getFilteredGreenNoteCounts($initialCounts, $authId));
-            $monthlyData = Cache::remember("dash_user_{$authId}_gn_month_" . now()->format('Y-m'), 180, fn () => $this->getFilteredGreenNoteCounts($initialCounts, $authId, $startOfMonth, $endOfMonth));
+            $allData = Cache::remember("dash_user_{$authId}_org_{$orgId}_gn_all", 180, fn () => $this->getFilteredGreenNoteCounts($initialCounts, $authId));
+            $monthlyData = Cache::remember("dash_user_{$authId}_org_{$orgId}_gn_month_" . now()->format('Y-m'), 180, fn () => $this->getFilteredGreenNoteCounts($initialCounts, $authId, $startOfMonth, $endOfMonth));
 
-            $tillDateReimbursementData = Cache::remember("dash_user_{$authId}_reim_all", 180, fn () => $this->getChunkedReimbursementCounts(null, null, $statusList, $authId));
-            $monthlyReimbursementData = Cache::remember("dash_user_{$authId}_reim_month_" . now()->format('Y-m'), 180, fn () => $this->getChunkedReimbursementCounts($startOfMonth, $endOfMonth, $statusList, $authId));
+            $tillDateReimbursementData = Cache::remember("dash_user_{$authId}_org_{$orgId}_reim_all", 180, fn () => $this->getChunkedReimbursementCounts(null, null, $statusList, $authId));
+            $monthlyReimbursementData = Cache::remember("dash_user_{$authId}_org_{$orgId}_reim_month_" . now()->format('Y-m'), 180, fn () => $this->getChunkedReimbursementCounts($startOfMonth, $endOfMonth, $statusList, $authId));
 
-            $currentMonthPaymentCounts = Cache::remember("dash_user_{$authId}_pay_counts_month_" . now()->format('Y-m'), 180, function () use ($authId, $startOfMonth, $endOfMonth) {
+            $currentMonthPaymentCounts = Cache::remember("dash_user_{$authId}_org_{$orgId}_pay_counts_month_" . now()->format('Y-m'), 180, function () use ($authId, $startOfMonth, $endOfMonth) {
                 return $this->aggregateChunkedStatusCounts(
                     PaymentNote::whereHas('paymentApprovalLogs.logPriorities.priority', function ($q) use ($authId) {
                         $q->where('reviewer_id', $authId);
@@ -884,7 +891,7 @@ class DashboardController extends Controller
                 );
             });
 
-            $tillDatePaymentCounts = Cache::remember("dash_user_{$authId}_pay_counts_all", 180, function () use ($authId) {
+            $tillDatePaymentCounts = Cache::remember("dash_user_{$authId}_org_{$orgId}_pay_counts_all", 180, function () use ($authId) {
                 return $this->aggregateChunkedStatusCounts(
                     PaymentNote::whereHas('paymentApprovalLogs.logPriorities.priority', function ($q) use ($authId) {
                         $q->where('reviewer_id', $authId);
@@ -894,13 +901,13 @@ class DashboardController extends Controller
                 );
             });
 
-            $bankCounts = Cache::remember("dash_user_{$authId}_bank_counts_" . now()->format('Y-m'), 180, fn () => $this->getBankCounts($authId));
+            $bankCounts = Cache::remember("dash_user_{$authId}_org_{$orgId}_bank_counts_" . now()->format('Y-m'), 180, fn () => $this->getBankCounts($authId));
 
             $tillPaymentDateData = $bankCounts['till_date'];
             $currentPaymentMonthData = $bankCounts['current_month'];
         }
 
-        $userData = Cache::remember('user-approval-data', 300, function () {
+        $userData = Cache::remember("user-approval-data-org_{$orgId}", 300, function () {
             return $this->getUserApprovalData(); // your optimized function
         });
         return view('backend.dashboard.index', ['dataTill' => $allData, 'dataCurrent' => $monthlyData, 'dataReimbursementTill' => $tillDateReimbursementData, 'dataReimbursementCurrent' => $monthlyReimbursementData, 'dataPaymentCurrent' => $currentMonthPaymentCounts, 'dataPaymentTill' => $tillDatePaymentCounts, 'currentMonthFormatted' => $currentPaymentMonthData, 'tillDateFormatted' => $tillPaymentDateData, 'userData' => $userData]);

@@ -3,9 +3,20 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\UsesOrganizationDatabase;
 
 class BankLetterApprovalStep extends Model
 {
+    use UsesOrganizationDatabase;
+    
+    /**
+     * The connection name for the model.
+     * Uses organization database for bank letter approval steps
+     *
+     * @var string
+     */
+    protected $connection = 'organization';
+    
     protected $fillable = ['min_amount', 'max_amount'];
 
     public function approvers()
