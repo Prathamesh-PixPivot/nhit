@@ -10,7 +10,7 @@
 ssh your-user@your-server-ip
 
 # Run one-command setup
-curl -fsSL https://raw.githubusercontent.com/your-username/nhit/main/deploy/server-setup-minimal.sh | bash
+curl -fsSL https://raw.githubusercontent.com/Prathamesh-PixPivot/nhit/main/deploy/server-setup-minimal.sh | bash
 
 # Reboot server
 sudo reboot
@@ -55,7 +55,7 @@ CACHE_DRIVER=redis
 SESSION_DRIVER=redis
 QUEUE_CONNECTION=redis
 
-DOCKER_IMAGE=ghcr.io/your-username/nhit:latest
+DOCKER_IMAGE=ghcr.io/Prathamesh-PixPivot/nhit:latest
 APP_PORT=80
 EOF
 ```
@@ -120,7 +120,7 @@ ssh your-user@your-server-ip "cd /opt/nhit && docker-compose -f docker-compose.p
 ssh your-user@your-server-ip "cd /opt/nhit && docker-compose -f docker-compose.prod.yml logs -f app"
 
 # Manual deploy
-ssh your-user@your-server-ip "cd /opt/nhit && ./deploy-image.sh ghcr.io/your-username/nhit:latest"
+ssh your-user@your-server-ip "cd /opt/nhit && ./deploy-image.sh ghcr.io/Prathamesh-PixPivot/nhit:latest"
 ```
 
 ## 🆘 Need Help?

@@ -40,7 +40,7 @@ This deployment strategy:
 ssh your-user@your-server-ip
 
 # Download and run the setup script
-curl -fsSL https://raw.githubusercontent.com/your-username/nhit/main/deploy/server-setup-minimal.sh -o setup.sh
+curl -fsSL https://raw.githubusercontent.com/Prathamesh-PixPivot/nhit/main/deploy/server-setup-minimal.sh -o setup.sh
 chmod +x setup.sh
 ./setup.sh
 ```
@@ -119,7 +119,7 @@ SESSION_DRIVER=redis
 QUEUE_CONNECTION=redis
 
 # Docker Image (will be updated automatically)
-DOCKER_IMAGE=ghcr.io/your-username/nhit:latest
+DOCKER_IMAGE=ghcr.io/Prathamesh-PixPivot/nhit:latest
 APP_PORT=80
 ```
 
@@ -297,11 +297,11 @@ docker-compose -f docker-compose.prod.yml exec -T db mysql -u root -p nhit_produ
 
 ```bash
 # Build and push image manually (from local machine)
-docker build -t ghcr.io/your-username/nhit:latest .
-docker push ghcr.io/your-username/nhit:latest
+docker build -t ghcr.io/Prathamesh-PixPivot/nhit:latest .
+docker push ghcr.io/Prathamesh-PixPivot/nhit:latest
 
 # Deploy on server
-ssh your-user@your-server-ip "cd /opt/nhit && ./deploy-image.sh ghcr.io/your-username/nhit:latest"
+ssh your-user@your-server-ip "cd /opt/nhit && ./deploy-image.sh ghcr.io/Prathamesh-PixPivot/nhit:latest"
 ```
 
 ---
@@ -338,7 +338,7 @@ docker-compose -f docker-compose.prod.yml exec app php artisan tinker
 echo $GITHUB_TOKEN | docker login ghcr.io -u USERNAME --password-stdin
 
 # Pull image manually
-docker pull ghcr.io/your-username/nhit:latest
+docker pull ghcr.io/Prathamesh-PixPivot/nhit:latest
 ```
 
 #### 4. Permission Issues
@@ -448,7 +448,7 @@ sudo systemctl restart sshd
 
 ```bash
 # Scan images for vulnerabilities
-docker scout cves ghcr.io/your-username/nhit:latest
+docker scout cves ghcr.io/Prathamesh-PixPivot/nhit:latest
 
 # Update base images regularly
 # (handled automatically in CI/CD)
@@ -516,7 +516,7 @@ docker-compose -f docker-compose.prod.yml exec app composer dump-autoload --opti
 
 ```bash
 # Deploy new image
-./deploy-image.sh ghcr.io/your-username/nhit:latest
+./deploy-image.sh ghcr.io/Prathamesh-PixPivot/nhit:latest
 
 # Check status
 docker-compose -f docker-compose.prod.yml ps
