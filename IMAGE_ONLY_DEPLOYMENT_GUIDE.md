@@ -37,7 +37,7 @@ This deployment strategy:
 #### Option A: Automated Setup (Recommended)
 ```bash
 # SSH into your server
-ssh your-user@your-server-ip
+ssh nhitAdmin@your-server-ip
 
 # Download and run the setup script
 curl -fsSL https://raw.githubusercontent.com/Prathamesh-PixPivot/nhit/main/deploy/server-setup-minimal.sh -o setup.sh
@@ -72,11 +72,11 @@ sudo reboot
 
 ```bash
 # From your local machine, copy the deployment script
-scp deploy/deploy-image.sh your-user@your-server-ip:/opt/nhit/
-scp docker-compose.prod.yml your-user@your-server-ip:/opt/nhit/
+scp deploy/deploy-image.sh nhitAdmin@your-server-ip:/opt/nhit/
+scp docker-compose.prod.yml nhitAdmin@your-server-ip:/opt/nhit/
 
 # SSH into server and make script executable
-ssh your-user@your-server-ip
+ssh nhitAdmin@your-server-ip
 chmod +x /opt/nhit/deploy-image.sh
 ```
 
@@ -84,7 +84,7 @@ chmod +x /opt/nhit/deploy-image.sh
 
 ```bash
 # SSH into your server
-ssh your-user@your-server-ip
+ssh nhitAdmin@your-server-ip
 
 # Create production environment file
 nano /opt/nhit/.env.prod
