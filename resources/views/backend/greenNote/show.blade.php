@@ -471,7 +471,7 @@
     </div>
     
     <!-- Hold Modal -->
-    <div class="modal fade" id="holdModal" tabindex="-1" aria-labelledby="holdModalLabel" aria-hidden="true">
+    <div class="modal fade" id="holdModal" tabindex="-1" aria-labelledby="holdModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
@@ -505,7 +505,7 @@
     </div>
     
     <!-- Unhold Modal -->
-    <div class="modal fade" id="unholdModal" tabindex="-1" aria-labelledby="unholdModalLabel" aria-hidden="true">
+    <div class="modal fade" id="unholdModal" tabindex="-1" aria-labelledby="unholdModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
@@ -524,7 +524,19 @@
                             <strong>Hold Date:</strong> {{ $note->hold_date ? \Carbon\Carbon::parse($note->hold_date)->format('d/m/Y h:i A') : 'N/A' }}<br>
                             <strong>Hold By:</strong> {{ $note->holdBy->name ?? 'N/A' }}
                         </div>
-                        <p>Are you sure you want to remove the hold from this note? This will resume the approval process.</p>
+                        
+                        <div class="mb-3">
+                            <label for="new_status" class="form-label">Restore Status <span class="text-danger">*</span></label>
+                            <select class="form-select" id="new_status" name="new_status" required>
+                                <option value="">Select status to restore...</option>
+                                <option value="P" selected>Pending (P) - Resume approval process</option>
+                                <option value="D">Draft (D) - Return to draft</option>
+                                <option value="S">Submitted (S) - Mark as submitted</option>
+                            </select>
+                            <small class="text-muted">Select the status to restore the note to after removing hold.</small>
+                        </div>
+                        
+                        <p>Are you sure you want to remove the hold from this note?</p>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -605,6 +617,12 @@
     .spinner-border-sm {
         color: #0d6efd;
     }
+
+    /* Hold modals should use default Bootstrap z-index (now that global backdrop is fixed) */
+    #holdModal,
+    #unholdModal {
+        z-index: 1055;
+    }
 </style>
 @endpush
 
@@ -631,5 +649,6 @@
             btn.disabled = true;
             spinner.classList.remove('d-none');
         });
+
     </script>
 @endpush

@@ -1,5 +1,5 @@
 <!-- Quick Actions Sidebar -->
-<div class="offcanvas offcanvas-end" tabindex="-1" id="quickActionsOffcanvas" aria-labelledby="quickActionsOffcanvasLabel">
+<div class="offcanvas offcanvas-end" tabindex="-1" id="quickActionsOffcanvas" aria-labelledby="quickActionsOffcanvasLabel" style="z-index: 100000;">
     <div class="offcanvas-header bg-primary text-white">
         <h5 class="offcanvas-title" id="quickActionsOffcanvasLabel">
             <i class="bi bi-lightning me-2"></i>Quick Actions
@@ -177,14 +177,14 @@
 </div>
 
 <!-- Quick Actions Toggle Button -->
-<div class="position-fixed top-50 end-0 translate-middle-y" style="z-index: 1040;">
+<div class="position-fixed top-50 end-0 translate-middle-y" style="z-index: 100001;">
     <button class="btn btn-primary rounded-start shadow-lg" type="button" data-bs-toggle="offcanvas" data-bs-target="#quickActionsOffcanvas" title="Quick Actions">
         <i class="bi bi-lightning"></i>
     </button>
 </div>
 
 <!-- Vendor Code Generator Modal -->
-<div class="modal fade" id="vendorCodeGeneratorModal" tabindex="-1" aria-labelledby="vendorCodeGeneratorModalLabel" aria-hidden="true">
+<div class="modal fade" id="vendorCodeGeneratorModal" tabindex="-1" aria-labelledby="vendorCodeGeneratorModalLabel" aria-hidden="true" style="z-index: 100000;">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
@@ -308,7 +308,7 @@ function generateVendorReport() {
 function showNotification(message, type = 'info') {
     const notification = document.createElement('div');
     notification.className = `alert alert-${type === 'error' ? 'danger' : type} alert-dismissible fade show position-fixed`;
-    notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+    notification.style.cssText = 'top: 20px; right: 20px; z-index: 100002; min-width: 300px;';
     notification.innerHTML = `
         <div class="d-flex align-items-center">
             <i class="bi bi-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-triangle' : 'info-circle'} me-2"></i>

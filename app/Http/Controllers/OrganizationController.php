@@ -217,6 +217,7 @@ class OrganizationController extends Controller
             
             Log::info("Switch request: User {$user->id} to organization {$organizationId}");
             
+            // Always query organizations from main database
             $organization = Organization::on('mysql')->find($organizationId);
             
             if (!$organization) {
@@ -234,20 +235,30 @@ class OrganizationController extends Controller
             // Set a reasonable timeout for the switch operation
             set_time_limit(30); // 30 seconds max
             
+            // Store organization data before switch (to avoid querying after context change)
+            $orgData = [
+                'id' => $organization->id,
+                'name' => $organization->name,
+                'code' => $organization->code
+            ];
+            
             if ($user->switchToOrganization($organizationId)) {
-                // Clear organization-specific dashboard cache
-                $this->clearDashboardCache($user->id, $organizationId);
+                try {
+                    // Clear organization-specific dashboard cache
+                    $this->clearDashboardCache($user->id, $organizationId);
+                } catch (\Exception $e) {
+                    // Log cache clear error but don't fail the switch
+                    Log::warning("Failed to clear dashboard cache after switch: " . $e->getMessage());
+                }
                 
                 Log::info("Switch successful: User {$user->id} to organization {$organizationId}");
+                
+                // Return response immediately to avoid any database context issues
                 return response()->json([
                     'success' => true,
                     'message' => 'Organization switched successfully!',
                     'is_first_time' => !$isMigrated,
-                    'organization' => [
-                        'id' => $organization->id,
-                        'name' => $organization->name,
-                        'code' => $organization->code
-                    ]
+                    'organization' => $orgData
                 ]);
             }
 

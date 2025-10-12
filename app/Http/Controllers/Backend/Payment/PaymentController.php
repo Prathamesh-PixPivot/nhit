@@ -139,6 +139,17 @@ class PaymentController extends Controller
                                         <i class="bi bi-pencil-square"></i>
                                     </a>';
                         }
+                        
+                        // Add Create Bank Letter button for status 'S' (Sent for Approval)
+                        if ($row->status == 'S') {
+                            $btn .=
+                                ' <a href="' .
+                                route('backend.bank-letter.index', ['sl_no' => $row->sl_no]) .
+                                '" class="btn btn-outline-success btn-xs" title="Create Bank Letter">
+                                    <i class="bi bi-bank"></i>
+                                </a>';
+                        }
+                        
                         $btn .=
                             ' <form action="' .
                             route('backend.templates.templateCommon', $row->template_type) .
@@ -236,6 +247,16 @@ class PaymentController extends Controller
                     ->addColumn('action', function ($row) {
                         $btn = '';
 
+                        // Add Create Bank Letter button for status 'S' (Sent for Approval)
+                        if ($row->status == 'S') {
+                            $btn .=
+                                ' <a href="' .
+                                route('backend.bank-letter.index', ['sl_no' => $row->sl_no]) .
+                                '" class="btn btn-outline-success btn-xs" title="Create Bank Letter">
+                                    <i class="bi bi-bank"></i>
+                                </a>';
+                        }
+                        
                         $btn .=
                             ' <form action="' .
                             route('backend.templates.templateCommon', $row->template_type) .

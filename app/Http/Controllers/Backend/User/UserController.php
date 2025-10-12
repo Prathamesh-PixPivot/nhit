@@ -201,12 +201,16 @@ class UserController extends Controller
     public function update(UpdateUserRequest $request, User $user): RedirectResponse
     {
         $roles = $request->roles;
+        
+        // Get all input except tokens and password confirmation
+        $input = $request->except('_token', '_method', 'roles', 'password', 'password_confirmation');
+        
+        // If password is provided, add it to input and delete sessions
         if (!empty($request->password)) {
             $input['password'] = $request->password;
             DB::table('sessions')->where('user_id', $user->id)->delete();
-        } else {
-            $input = $request->except('_token', '_method', 'roles', 'password', 'password_confirmation');
         }
+        
         if ($request->hasFile('file')) {
             // Delete the old file if it exists
             if ($user->file && file_exists(public_path('uploads/' . $user->file))) {
@@ -341,13 +345,16 @@ class UserController extends Controller
         ]);
 
         $roles = $request->roles;
+        
+        // Get all input except tokens and password confirmation
+        $input = $request->except('_token', '_method', 'roles', 'password', 'password_confirmation');
+        
+        // If password is provided, add it to input and delete sessions
         if (!empty($request->password)) {
             $input['password'] = $request->password;
-
             DB::table('sessions')->where('user_id', $user->id)->delete();
-        } else {
-            $input = $request->except('_token', '_method', 'roles', 'password', 'password_confirmation');
         }
+        
         if ($request->hasFile('file')) {
             // Delete the old file if it exists
             if ($user->file && file_exists(public_path('uploads/' . $user->file))) {

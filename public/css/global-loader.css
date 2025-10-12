@@ -5,6 +5,11 @@
 
 #global-page-loader {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    pointer-events: none;
+}
+
+#global-page-loader:not(.hidden) {
+    pointer-events: auto;
 }
 
 #global-page-loader .spinner-border {
@@ -96,15 +101,10 @@
     }
 }
 
-/* Blur effect for better focus */
-#global-page-loader::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    backdrop-filter: blur(3px);
-    -webkit-backdrop-filter: blur(3px);
-    z-index: -1;
+/* Ensure no backdrop blur when loader is hidden */
+#global-page-loader.hidden,
+#global-page-loader[style*="display: none"],
+#global-page-loader[style*="opacity: 0"] {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
 }

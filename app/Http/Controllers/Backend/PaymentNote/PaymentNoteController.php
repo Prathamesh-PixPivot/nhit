@@ -399,9 +399,9 @@ class PaymentNoteController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(PaymentNote $paymentNote, $id)
+    public function show(PaymentNote $paymentNote)
     {
-        $note = PaymentNote::find($id);
+        $note = $paymentNote;
 
         if (!$note) {
             return abort(404, 'Payment Note not found');
@@ -434,9 +434,9 @@ class PaymentNoteController extends Controller
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit(PaymentNote $paymentNote, $id)
+    public function edit(PaymentNote $paymentNote)
     {
-        $note = PaymentNote::find($id);
+        $note = $paymentNote;
 
         if (!$note) {
             return abort(404, 'Payment Note not found');
@@ -456,7 +456,7 @@ class PaymentNoteController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, PaymentNote $paymentNote, $id)
+    public function update(Request $request, PaymentNote $paymentNote)
     {
         $validated = $request->validate([
             'subject' => 'required|string',
@@ -471,7 +471,7 @@ class PaymentNoteController extends Controller
             'less_particulars.*.particular' => 'nullable|string',
             'less_particulars.*.amount' => 'nullable|numeric',
         ]);
-        $getPaymentNote = PaymentNote::findOrFail($id);
+        $getPaymentNote = $paymentNote;
         // dd($request->all());
         $addParticulars = [];
         if (!empty($request->add_particulars)) {
@@ -541,26 +541,26 @@ class PaymentNoteController extends Controller
             }
 
             if ($getPaymentNote->greenNote) {
-                $name = $getPaymentNote->greenNote->vendor->project;
-                $supplier = $getPaymentNote->greenNote->supplier->vendor_name ?? null;
+                $name = optional(optional($getPaymentNote->greenNote)->vendor)->project ?? 'N/A';
+                $supplier = optional(optional($getPaymentNote->greenNote)->supplier)->vendor_name ?? 'N/A';
             } elseif ($getPaymentNote->reimbursementNote) {
-                $name = $getPaymentNote->reimbursementNote->project->project;
-                $supplier = $getPaymentNote->reimbursementNote->user->name ?? null;
+                $name = optional(optional($getPaymentNote->reimbursementNote)->project)->project ?? 'N/A';
+                $supplier = optional(optional($getPaymentNote->reimbursementNote)->user)->name ?? 'N/A';
             } else {
-                $name = '';
-                $supplier = '';
+                $name = 'N/A';
+                $supplier = 'N/A';
             }
             $data = [
-                'updated_by' => auth()->user()->email,
-                'subject' => 'Payment Note for ' . $name . 'of Rs' . $getPaymentNote->net_payable_round_off . ' has been Generated',
-                'approver_name' => $approvalLevel->user->name ?? 'Approver',
-                'maker' => $getPaymentNote->user->name . ' has generated a Payment Note No. ' . $getPaymentNote->note_no . ' for ' . $name . ' of Rs ' . $getPaymentNote->net_payable_round_off . ' of ' . $supplier . ' & due for your review.',
+                'updated_by' => auth()->user()->email ?? 'System',
+                'subject' => 'Payment Note for ' . $name . ' of Rs ' . ($getPaymentNote->net_payable_round_off ?? 0) . ' has been Generated',
+                'approver_name' => optional($approvalLevel->user)->name ?? 'Approver',
+                'maker' => optional($getPaymentNote->user)->name . ' has generated a Payment Note No. ' . $getPaymentNote->note_no . ' for ' . $name . ' of Rs ' . ($getPaymentNote->net_payable_round_off ?? 0) . ' of ' . $supplier . ' & due for your review.',
                 'end' => 'Login to the panel for review & Approval/Rejection',
             ];
 
             // Mail::to('lamawav925@movfull.com')->send(new NoteStatusChangeMail($data));
 
-            if ($approvalLevel->user->email !== auth()->user()->email) {
+            if (optional($approvalLevel->user)->email && $approvalLevel->user->email !== auth()->user()->email) {
                 Mail::to($approvalLevel->user->email)->send(new NoteStatusChangeMail($data));
             }
         }
@@ -571,18 +571,18 @@ class PaymentNoteController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(PaymentNote $paymentNote, $id)
+    public function destroy(PaymentNote $paymentNote)
     {
         try {
-            $logs = PaymentNoteApprovalLog::where('payment_note_id', $id)->get();
+            $logs = PaymentNoteApprovalLog::where('payment_note_id', $paymentNote->id)->get();
 
             foreach ($logs as $log) {
                 PaymentNoteLogPriority::where('payment_note_approval_log_id', $log->id)->delete();
             }
 
-            PaymentNoteApprovalLog::where('payment_note_id', $id)->delete();
+            PaymentNoteApprovalLog::where('payment_note_id', $paymentNote->id)->delete();
 
-            PaymentNote::findOrFail($id)->delete();
+            $paymentNote->delete();
 
             return redirect()->route('backend.payment-note.index')->with('success', 'Payment Note deleted successfully.');
         } catch (\Exception $e) {

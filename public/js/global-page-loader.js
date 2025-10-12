@@ -25,12 +25,14 @@ function createLoaderHTML() {
     
     const loader = document.createElement('div');
     loader.id = 'global-page-loader';
-    loader.className = 'position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center';
+    loader.className = 'position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center hidden';
     loader.style.cssText = `
         background: rgba(255, 255, 255, 0.95);
-        backdrop-filter: blur(5px);
-        z-index: 99999;
+        z-index: -1;
         transition: opacity 0.3s ease;
+        display: none;
+        opacity: 0;
+        pointer-events: none;
     `;
     
     loader.innerHTML = `
@@ -179,14 +181,20 @@ function setupAjaxLoader() {
 function showGlobalLoader(message = 'Loading...') {
     const loader = document.getElementById('global-page-loader');
     if (loader) {
+        // Remove hidden class when showing
+        loader.classList.remove('hidden');
+        loader.style.display = 'flex';
+        loader.style.zIndex = '99999';
+        loader.style.pointerEvents = 'auto';
+        loader.style.backdropFilter = 'blur(5px)';
+        loader.style.webkitBackdropFilter = 'blur(5px)';
+        
         // Update message
         const messageEl = loader.querySelector('h5');
         if (messageEl) {
             messageEl.textContent = message;
         }
         
-        // Show loader
-        loader.style.display = 'flex';
         loader.style.opacity = '1';
         
         // Restart progress animation
@@ -197,9 +205,17 @@ function showGlobalLoader(message = 'Loading...') {
 function hideGlobalLoader() {
     const loader = document.getElementById('global-page-loader');
     if (loader) {
+        loader.classList.add('hidden');
         loader.style.opacity = '0';
+        loader.style.pointerEvents = 'none';
+
+        // Remove backdrop-filter from inline styles
+        loader.style.backdropFilter = 'none';
+        loader.style.webkitBackdropFilter = 'none';
+
         setTimeout(() => {
             loader.style.display = 'none';
+            loader.style.zIndex = '-1';
         }, 300);
     }
 }

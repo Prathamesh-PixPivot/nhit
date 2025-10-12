@@ -1,5 +1,5 @@
 <!-- Feature Guide Modal -->
-<div class="modal fade" id="featureGuideModal" tabindex="-1" aria-labelledby="featureGuideModalLabel" aria-hidden="true">
+<div class="modal fade" id="featureGuideModal" tabindex="-1" aria-labelledby="featureGuideModalLabel" aria-hidden="true" style="z-index: 100000;">
     <div class="modal-dialog modal-xl">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
@@ -437,11 +437,24 @@
 </div>
 
 <!-- Feature Guide Button (Floating) -->
-<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 1050;">
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 100001;">
     <button type="button" class="btn btn-primary rounded-circle shadow-lg" data-bs-toggle="modal" data-bs-target="#featureGuideModal" title="Feature Guide">
         <i class="bi bi-question-circle fs-5"></i>
     </button>
 </div>
+
+<style>
+/* Ensure feature guide modal backdrop is above global loader */
+#featureGuideModal ~ .modal-backdrop,
+.modal-backdrop.feature-guide-backdrop {
+    z-index: 99998 !important;
+}
+
+/* Ensure feature guide modal is above everything */
+#featureGuideModal {
+    z-index: 100000 !important;
+}
+</style>
 
 <script>
 function markGuideAsRead() {
@@ -452,7 +465,7 @@ function markGuideAsRead() {
     // Show success notification
     const notification = document.createElement('div');
     notification.className = 'alert alert-success alert-dismissible fade show position-fixed';
-    notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+    notification.style.cssText = 'top: 20px; right: 20px; z-index: 100002; min-width: 300px;';
     notification.innerHTML = `
         <div class="d-flex align-items-center">
             <i class="bi bi-check-circle me-2"></i>
@@ -478,6 +491,19 @@ document.addEventListener('DOMContentLoaded', function() {
             const modal = new bootstrap.Modal(document.getElementById('featureGuideModal'));
             modal.show();
         }, 2000);
+    }
+
+    // Mark feature guide backdrop with specific class
+    const featureGuideModal = document.getElementById('featureGuideModal');
+    if (featureGuideModal) {
+        featureGuideModal.addEventListener('show.bs.modal', function() {
+            setTimeout(() => {
+                const backdrops = document.querySelectorAll('.modal-backdrop');
+                backdrops.forEach(backdrop => {
+                    backdrop.classList.add('feature-guide-backdrop');
+                });
+            }, 50);
+        });
     }
 });
 </script>

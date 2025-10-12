@@ -154,6 +154,7 @@ class User extends Authenticatable
     {
         \Log::info("User {$this->id} attempting to switch to organization {$organizationId}");
         
+        // Always use mysql connection for organization queries
         $organization = \App\Models\Organization::on('mysql')->find($organizationId);
         
         if (!$organization || !$organization->is_active) {
@@ -168,7 +169,11 @@ class User extends Authenticatable
         }
         
         \Log::info("Updating user {$this->id} current_organization_id to {$organizationId}");
-        $this->update(['current_organization_id' => $organizationId]);
+        
+        // Use setConnection to ensure we're updating on the correct database
+        $this->setConnection('mysql');
+        $this->current_organization_id = $organizationId;
+        $this->save();
         
         // Check if user already exists in target organization (use cache)
         $cacheKey = "user_migrated_{$this->id}_org_{$organizationId}";
