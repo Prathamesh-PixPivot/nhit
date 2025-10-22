@@ -237,21 +237,25 @@ Route::group(['prefix' => 'backend', 'as' => 'backend.'], function () {
             ->prefix('bank-letter')
             ->name('bank-letter.')
             ->group(function () {
-                // returns the home page with all payments
+                // Main index page with DataTable support
                 Route::match(['get', 'post'], '/', 'index')->name('index');
-                // returns the form for adding a payment
+                
+                // Dashboard for bank letters
+                Route::get('/dashboard', 'dashboard')->name('dashboard');
+                
+                // Approval rule management
                 Route::get('/create', 'create')->name('create');
-                // adds a payment to the database
                 Route::post('/', 'store')->name('store');
-                // returns a page that shows a full payment
-                Route::get('/{payment}', 'show')->name('show');
-
-                // returns the form for editing a payment
-                Route::get('/{payment}/edit', 'edit')->name('edit');
-                // updates a payment
-                Route::put('/{payment}', 'update')->name('update');
-                // deletes a payment
-                Route::delete('/{payment}', 'destroy')->name('destroy');
+                Route::get('/{step}', 'show')->name('show');
+                Route::get('/{step}/edit', 'edit')->name('edit');
+                Route::put('/{step}', 'update')->name('update');
+                Route::delete('/{step}', 'destroy')->name('destroy');
+                
+                // Bank letter specific operations
+                Route::get('/letter/{slNo}', 'showLetter')->name('show-letter');
+                Route::get('/letter/{slNo}/approve', 'approveForm')->name('approve-form');
+                Route::post('/letter/{slNo}/approve', 'processApproval')->name('process-approval');
+                Route::get('/letter/{slNo}/download', 'download')->name('download');
             });
         Route::controller(AccountController::class)
             ->prefix('accounts')
@@ -336,13 +340,13 @@ Route::group(['prefix' => 'backend', 'as' => 'backend.'], function () {
                 // adds a account to the database
                 Route::post('/', 'store')->name('store')->middleware('can:create-payment-note');
                 // returns a page that shows a full account
-                Route::get('show/{account}', 'show')->name('show')->middleware('can:view-payment-note');
+                Route::get('show/{paymentNote}', 'show')->name('show')->middleware('can:view-payment-note');
                 // returns the form for editing a account
-                Route::get('{id}/edit', 'edit')->name('edit')->middleware('can:edit-payment-note');
+                Route::get('{paymentNote}/edit', 'edit')->name('edit')->middleware('can:edit-payment-note');
                 // updates a account
-                Route::put('/{account}', 'update')->name('update')->middleware('can:edit-payment-note');
+                Route::put('/{paymentNote}', 'update')->name('update')->middleware('can:edit-payment-note');
                 // deletes a account
-                Route::delete('/{account}', 'destroy')->name('destroy')->middleware('can:delete-payment-note');
+                Route::delete('/{paymentNote}', 'destroy')->name('destroy')->middleware('can:delete-payment-note');
                 Route::get('/rule', 'rule')->name('rule')->middleware('can:payment-note-view-rule');
                 Route::get('/download-payment-note/{id}', 'downloadGreenNotePdf')->name('download');
                 Route::post('/updateUtr', 'updateUtr')->name('updateUtr');

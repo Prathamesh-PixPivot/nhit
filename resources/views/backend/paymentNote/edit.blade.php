@@ -12,6 +12,46 @@
     <section class="section">
         <div class="row">
             <div class="col-lg-12">
+                <!-- Edit Permission Info -->
+                @php
+                    $currentApproverId = $note->getCurrentPendingApprover();
+                    $currentApprover = $currentApproverId ? \App\Models\User::find($currentApproverId) : null;
+                    $isCurrentApprover = $note->isCurrentApprover(auth()->id());
+                    $isSuperAdmin = auth()->user()->hasRole('Super Admin');
+                @endphp
+
+                @if($isCurrentApprover)
+                    <div class="alert alert-info border-0 shadow-sm mb-3">
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-info-circle-fill me-3 fs-4"></i>
+                            <div>
+                                <h6 class="mb-1 fw-bold">You are the Current Approver</h6>
+                                <p class="mb-0 small">You can edit this payment note as you are responsible for the current approval step.</p>
+                            </div>
+                        </div>
+                    </div>
+                @elseif($isSuperAdmin)
+                    <div class="alert alert-warning border-0 shadow-sm mb-3">
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-shield-fill-check me-3 fs-4"></i>
+                            <div>
+                                <h6 class="mb-1 fw-bold">SuperAdmin Access</h6>
+                                <p class="mb-0 small">You have administrative privileges to edit this payment note.</p>
+                            </div>
+                        </div>
+                    </div>
+                @elseif($note->isDraft())
+                    <div class="alert alert-success border-0 shadow-sm mb-3">
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-file-earmark-text me-3 fs-4"></i>
+                            <div>
+                                <h6 class="mb-1 fw-bold">Draft Payment Note</h6>
+                                <p class="mb-0 small">You can edit this draft payment note as the creator.</p>
+                            </div>
+                        </div>
+                    </div>
+                @endif
+
                 <div class="card">
                     <div class="card-body">
                         <h5 class="card-title">Edit Payment Note ({{ $note->note_no }})</h5>
@@ -26,7 +66,7 @@
                             </div>
                         @endif
                         <!-- Vertical Form -->
-                        <form class="row g-3" action="{{ route('backend.payment-note.update', $note->id) }}" method="post"
+                        <form class="row g-3" action="{{ route('backend.payment-note.update', ['paymentNote' => $note]) }}" method="post"
                             enctype="multipart/form-data">
                             @csrf
                             @method('PUT')

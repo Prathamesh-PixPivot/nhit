@@ -73,3 +73,20 @@ composer.phar
 
 # Deployment files (keep only what's needed)
 deploy/server-setup.sh
+
+# Large files that can cause permission issues
+nhit-image.tar
+*.tar
+*.zip
+
+# GCP deployment files (not needed in container)
+terraform/
+gcp-deployment.yml
+cloudbuild.yaml
+deploy-to-gcp.*
+*DEPLOYMENT*.md
+*GUIDE*.md
+
+# Problematic theme files (rebuild from source)
+/public/theme/assets/vendor/bootstrap/js
+/public/theme/assets/vendor/*/

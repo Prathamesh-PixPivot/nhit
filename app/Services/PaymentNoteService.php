@@ -53,19 +53,47 @@ class PaymentNoteService
      */
     private function createInitialApprovalLog(PaymentNote $paymentNote, User $approver)
     {
-        // Find the appropriate reviewer for the first step
-        // This should be based on your approval flow configuration
-        $initialReviewer = $this->getInitialReviewer($paymentNote);
+        // Find the correct approval step based on payment amount
+        $approvalStep = \App\Models\PaymentNoteApprovalStep::where('min_amount', '<=', $paymentNote->net_payable_round_off)
+            ->where(function ($query) use ($paymentNote) {
+                $query->where('max_amount', '>=', $paymentNote->net_payable_round_off)
+                      ->orWhereNull('max_amount');
+            })
+            ->orderBy('min_amount', 'desc')
+            ->first();
 
-        if ($initialReviewer) {
-            PaymentNoteApprovalLog::create([
-                'payment_note_id' => $paymentNote->id,
-                'priority_id' => 1, // First priority
-                'reviewer_id' => $initialReviewer->id,
-                'status' => 'P', // Pending
-                'comments' => 'Auto-created draft payment note',
-            ]);
+        if (!$approvalStep) {
+            Log::warning("No approval step found for payment amount: {$paymentNote->net_payable_round_off}");
+            return;
         }
+
+        // Get Level 1 approvers for this amount range
+        $level1Approvers = \App\Models\PaymentNoteApprovalPriority::where('approval_step_id', $approvalStep->id)
+            ->where('approver_level', 1)
+            ->get();
+
+        if ($level1Approvers->isEmpty()) {
+            Log::warning("No Level 1 approvers found for approval step {$approvalStep->id}");
+            return;
+        }
+
+        // Create approval log for the first Level 1 approver
+        $firstApprover = $level1Approvers->first();
+        $log = PaymentNoteApprovalLog::create([
+            'payment_note_id' => $paymentNote->id,
+            'priority_id' => $firstApprover->id,
+            'reviewer_id' => $firstApprover->reviewer_id,
+            'status' => 'P', // Pending
+            'comments' => 'Auto-created for approval',
+        ]);
+
+        // Attach all Level 1 approvers to this log
+        $level1ApproverIds = $level1Approvers->pluck('id')->toArray();
+        if (!empty($level1ApproverIds)) {
+            $log->priorities()->attach($level1ApproverIds);
+        }
+
+        Log::info("Initial approval log created for Payment Note {$paymentNote->id} with Level 1 approvers");
     }
 
     /**

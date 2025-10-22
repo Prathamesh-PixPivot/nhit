@@ -4,11 +4,10 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use App\Traits\UsesOrganizationDatabase;
 
 class PaymentNote extends Model
 {
-    use HasFactory, UsesOrganizationDatabase;
+    use HasFactory;
     
     /**
      * The connection name for the model.
@@ -172,5 +171,62 @@ class PaymentNote extends Model
             'is_draft' => false,
             'status' => 'P', // Pending status
         ]);
+    }
+
+    /**
+     * Get the current pending approver for this payment note
+     */
+    public function getCurrentPendingApprover()
+    {
+        // Get the pending approval log with status 'P' (Pending)
+        $pendingLog = $this->paymentApprovalLogs()
+            ->where('status', 'P')
+            ->with('logPriorities.priority.user')
+            ->orderBy('created_at', 'asc')
+            ->first();
+
+        if (!$pendingLog) {
+            return null;
+        }
+
+        // Get the reviewer from the log
+        return $pendingLog->reviewer_id;
+    }
+
+    /**
+     * Check if the given user is the current pending approver
+     */
+    public function isCurrentApprover($userId = null)
+    {
+        $userId = $userId ?? auth()->id();
+        $currentApproverId = $this->getCurrentPendingApprover();
+        
+        return $currentApproverId && $currentApproverId == $userId;
+    }
+
+    /**
+     * Check if user can edit this payment note
+     * Only current pending approver or creator can edit
+     */
+    public function canBeEditedBy($userId = null)
+    {
+        $userId = $userId ?? auth()->id();
+        
+        // SuperAdmin can always edit
+        if (auth()->user() && auth()->user()->hasRole('Super Admin')) {
+            return true;
+        }
+        
+        // Draft notes can be edited by creator
+        if ($this->isDraft() && $this->created_by == $userId) {
+            return true;
+        }
+        
+        // Only current pending approver can edit active payment notes
+        if (!$this->isDraft() && $this->status === 'P') {
+            return $this->isCurrentApprover($userId);
+        }
+        
+        return false;
     }
 }

@@ -1286,197 +1286,46 @@ class PaymentController extends Controller
             return back()->with('error', 'No notes selected.');
         }
 
-        $notes = PaymentNote::whereIn('id', $noteIds)->get();
-
-        return view('backend.payment.createToBank', compact('notes'));
+        // Use the enhanced BankLetterService
+        try {
+            $bankLetterService = app(\App\Services\BankLetterService::class);
+            $result = $bankLetterService->createBankLetterFromNotes($noteIds, auth()->id());
+            
+            return redirect()->route('backend.bank-letter.show-letter', $result['sl_no'])
+                ->with('success', 'Bank letter created successfully with ' . $result['payments_count'] . ' payments totaling ₹' . number_format($result['total_amount'], 2));
+                
+        } catch (\Exception $e) {
+            return back()->with('error', 'Error creating bank letter: ' . $e->getMessage());
+        }
     }
     public function logUpdate(Request $request)
     {
-        $dataCheckAmount = Payment::where('sl_no', $request->sl_no)->latest()->take(12)->orderBy('id', 'asc')->get();
-        $paymentEmail = Payment::where('sl_no', $request->sl_no)->first();
-        $paymentEmailItems = Payment::where('sl_no', $request->sl_no)->get();
-
-        $totalAmount = $dataCheckAmount->sum('amount');
-
-        $existingLogsCount = BankLetterApprovalLog::where('sl_no', $request->sl_no)->count();
-        $existingLogsCountFirst = BankLetterApprovalLog::where('sl_no', $request->sl_no)->first();
-        $userAlreadySubmitted = BankLetterApprovalLog::where('sl_no', $request->sl_no)
-            ->where('reviewer_id', auth()->id())
-            ->exists();
-
-        if ($userAlreadySubmitted) {
-            return redirect()->back()->with('error', 'You have already submitted your approval.');
+        $request->validate([
+            'sl_no' => 'required|string',
+            'status' => 'required|in:A,R',
+            'remarks' => 'nullable|string|max:1000'
+        ]);
+        
+        try {
+            $bankLetterService = app(\App\Services\BankLetterService::class);
+            $result = $bankLetterService->processApproval(
+                $request->sl_no,
+                $request->status,
+                $request->remarks,
+                auth()->id()
+            );
+            
+            return redirect()->route('backend.payments.index')
+                ->with('success', $result['message']);
+                
+        } catch (\Exception $e) {
+            return redirect()->back()
+                ->with('error', $e->getMessage())
+                ->withInput();
         }
 
-        $approvalStepNew = BankLetterApprovalPriority::find($existingLogsCountFirst->priority_id);
-        $nextStep = $existingLogsCount + 1;
-        $approvalStepCurrent = BankLetterApprovalPriority::where('approver_level', $existingLogsCount)->where('approval_step_id', $approvalStepNew->approval_step_id)->first();
-        $approvalStep = BankLetterApprovalPriority::where('approver_level', $nextStep)->where('approval_step_id', $approvalStepNew->approval_step_id)->first();
-        $allApprovalStep = BankLetterApprovalPriority::where('approver_level', $nextStep)->where('approval_step_id', $approvalStepNew->approval_step_id)->pluck('id')->toArray();
-
-        // dd($approvalStep, $approvalStepNew);
-        if (!$approvalStepCurrent) {
-            return redirect()->back()->with('success', 'Approval step 1 not found.');
-        }
-        if (!$approvalStep && $request->status != 'R') {
-            BankLetterApprovalLog::create([
-                'sl_no' => $request->sl_no,
-                'priority_id' => $approvalStepCurrent->id,
-                'reviewer_id' => auth()->id(),
-                'status' => $request->status,
-                'comments' => $request->remarks ?? null,
-            ]);
-            foreach ($dataCheckAmount as $payment) {
-                $payment->status = 'A';
-                $payment->save();
-            }
-
-            // if (!empty($paymentEmail) && !empty($paymentEmail->payment_note_id)) {
-            //     $noteId = (int) $paymentEmail->payment_note_id;
-
-            //     if ($noteId > 0) {
-            //         $note = PaymentNote::with(['greenNote', 'reimbursementNote'])->find($noteId);
-
-            //         if ($note) {
-            //             $note->update(['status' => 'PA']);
-
-            //             if ($note->greenNote) {
-            //                 $note->greenNote->update(['status' => 'PA']);
-            //             }
-
-            //             if ($note->reimbursementNote) {
-            //                 $note->reimbursementNote->update(['status' => 'PA']);
-            //             }
-            //         }
-            //     }
-
-            foreach ($paymentEmailItems as $payment) {
-                $noteId = (int) $payment->payment_note_id;
-
-                if ($noteId > 0) {
-                    $note = PaymentNote::with(['greenNote', 'reimbursementNote'])->find($noteId);
-
-                    if ($note) {
-                        $note->update(['status' => 'A']);
-
-                        if ($note->greenNote) {
-                            $note->greenNote->update(['status' => 'A']);
-                        }
-
-                        if ($note->reimbursementNote) {
-                            $note->reimbursementNote->update(['status' => 'A']);
-                        }
-                    }
-                }
-            }
-
-            $data = [
-                'updated_by' => auth()->user()->email,
-                'subject' => 'Bank RTGS / NEFT Letter of Rs ' . $totalAmount . ' is Approved & due for Payment',
-                'approver_name' => $approvalStepCurrent->user->name ?? 'Approver',
-                'maker' => 'Approver 1 has approved a Bank RTGS / NEFT letter ' . $request->sl_no . ' of Rs ' . $totalAmount . ' for ' . $paymentEmail->project . ' & due for your review',
-                'end' => 'Login to the panel for review & process.',
-            ];
-
-            // Mail::to('rajoba3369@harinv.com')->send(new NoteStatusChangeMail($data));
-            Mail::to($paymentEmail->user->email)->send(new NoteStatusChangeMail($data));
-
-            return redirect()->route('backend.payments.index')->with('success', 'Final step reached. No further approvals needed.');
-        }
-
-        if ($request->status == 'A') {
-            $log = BankLetterApprovalLog::create([
-                'sl_no' => $request->sl_no,
-                'priority_id' => $approvalStep->id,
-                'reviewer_id' => auth()->id(),
-                'status' => $request->status,
-                'comments' => $request->remarks ?? null,
-            ]);
-            if (!empty($allApprovalStep)) {
-                $log->priorities()->attach($allApprovalStep);
-            }
-
-            $data = [
-                'updated_by' => auth()->user()->email,
-                'subject' => 'Bank RTGS / NEFT Letter of Rs Net Payable ' . $totalAmount . ' is due for Approval',
-                'approver_name' => $approvalStep->user->name ?? 'Approver',
-                'maker' => 'Approver 1 has approved a Bank RTGS / NEFT letter ' . $request->sl_no . ' of Rs ' . $totalAmount . ' for ' . $paymentEmail->project . ' & due for your review.',
-                'end' => 'Login for review & Final Approval',
-            ];
-            // // Mail Send
-            // Mail::to('rajoba3369@harinv.com')->send(new NoteStatusChangeMail($data));
-            Mail::to($approvalStep->user->email)->send(new NoteStatusChangeMail($data));
-            Mail::to($paymentEmail->user->email)->send(new NoteStatusChangeMail($data));
-
-            return redirect()->route('backend.payments.index')->with('success', 'Approval log created for the next step.');
-        } else {
-            // BankLetterApprovalLog::create([
-            //     'priority_id' => $approvalStepCurrent->id,
-            //     'sl_no' => $request->sl_no,
-            //     'reviewer_id' => auth()->id(),
-            //     'status' => $request->status,
-            //     'comments' => $request->remarks ?? null,
-            // ]);
-
-            // if (!empty($paymentEmail) && !empty($paymentEmail->payment_note_id)) {
-            //     $noteId = (int) $paymentEmail->payment_note_id;
-
-            //     if ($noteId > 0) {
-            //         $note = PaymentNote::with(['greenNote', 'reimbursementNote'])->find($noteId);
-
-            //         if ($note) {
-            //             $note->update(['status' => 'A']);
-
-            //             if ($note->greenNote) {
-            //                 $note->greenNote->update(['status' => 'A']);
-            //             }
-
-            //             if ($note->reimbursementNote) {
-            //                 $note->reimbursementNote->update(['status' => 'A']);
-            //             }
-            //         }
-            //     }
-            // }
-
-            foreach ($paymentEmailItems as $payment) {
-                $noteId = (int) $payment->payment_note_id;
-
-                if ($noteId > 0) {
-                    $note = PaymentNote::with(['greenNote', 'reimbursementNote'])->find($noteId);
-
-                    if ($note) {
-                        $note->update(['status' => 'A']);
-
-                        if ($note->greenNote) {
-                            $note->greenNote->update(['status' => 'A']);
-                        }
-
-                        if ($note->reimbursementNote) {
-                            $note->reimbursementNote->update(['status' => 'A']);
-                        }
-                    }
-                }
-            }
-
-            foreach ($dataCheckAmount as $payment) {
-                $payment->status = 'R';
-                $payment->save();
-            }
-            // Mail Send
-            $data = [
-                'updated_by' => auth()->user()->email,
-                'subject' => 'Bank RTGS / NEFT Letter of Rs  ' . $totalAmount . '  has been Rejected',
-                'approver_name' => $approvalStepCurrent->user->name ?? 'Approver',
-                'maker' => '[Approver] has Rejected The bank RTGS / NEFT Letter No. ' . $request->sl_no . '  of Rs  ' . $totalAmount . '  for  ' . $paymentEmail->project,
-                'rejection' => $request->remarks ?? null,
-                'end' => 'Login to the panel for review & process.',
-            ];
-            // // Mail Send
-            // Mail::to('rajoba3369@harinv.com')->send(new NoteStatusChangeMail($data));
-            Mail::to($paymentEmail->user->email)->send(new NoteStatusChangeMail($data));
-
-            return redirect()->route('backend.payments.index')->with('success', 'Approval has been rejected successfully with remarks.');
-        }
+        // This method is now handled by the BankLetterService
+        // Keeping for backward compatibility but redirecting to new method
     }
 
     private function generateSerialNumber()

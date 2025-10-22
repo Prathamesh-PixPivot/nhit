@@ -1,0 +1,31 @@
+# Simple Cloud Build for Windows users having Docker issues
+steps:
+  # Build the Docker image using Cloud Build
+  - name: 'gcr.io/cloud-builders/docker'
+    args: [
+      'build',
+      '-t', 'gcr.io/$PROJECT_ID/nhit-app:$COMMIT_SHA',
+      '-t', 'gcr.io/$PROJECT_ID/nhit-app:latest',
+      '.'
+    ]
+    timeout: '1200s'
+
+  # Push the Docker image to Container Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/nhit-app:$COMMIT_SHA']
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/nhit-app:latest']
+
+# Store images in Container Registry
+images:
+  - 'gcr.io/$PROJECT_ID/nhit-app:$COMMIT_SHA'
+  - 'gcr.io/$PROJECT_ID/nhit-app:latest'
+
+# Build configuration
+options:
+  machineType: 'E2_HIGHCPU_8'
+  diskSizeGb: '100'
+
+# Timeout for the entire build
+timeout: '1200s'

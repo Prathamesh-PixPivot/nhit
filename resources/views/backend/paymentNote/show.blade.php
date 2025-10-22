@@ -3,6 +3,20 @@
 @section('title', 'Payment Note Details - ' . ($note->formatted_order_no ?? 'N/A'))
 
 @section('content')
+    @if(!$note || !$note->id)
+        <div class="row">
+            <div class="col-12">
+                <div class="alert alert-danger">
+                    <h4><i class="icon fas fa-ban"></i> Payment Note Not Found!</h4>
+                    The requested payment note could not be found or may have been deleted.
+                </div>
+                <a href="{{ route('backend.payment-note.index') }}" class="btn btn-primary">
+                    <i class="bi bi-arrow-left me-1"></i>Back to Payment Notes
+                </a>
+            </div>
+        </div>
+        @return
+    @endif
     <!-- Welcome Header -->
     <div class="row mb-4">
         <div class="col-12">
@@ -14,9 +28,15 @@
                     <p class="text-muted mb-0">View and manage payment note information and approvals</p>
                 </div>
                 <div class="d-flex gap-2">
-                    <a href="{{ route('backend.payment-note.download', ['id' => $note->id]) }}" class="btn btn-primary">
-                        <i class="bi bi-download me-1"></i>Download PDF
-                    </a>
+                    @if($note && $note->exists && $note->id)
+                        <a href="{{ route('backend.payment-note.download', ['id' => $note->id]) }}" class="btn btn-primary">
+                            <i class="bi bi-download me-1"></i>Download PDF
+                        </a>
+                    @else
+                        <button class="btn btn-primary" disabled>
+                            <i class="bi bi-download me-1"></i>Download PDF (Unavailable)
+                        </button>
+                    @endif
                     <a href="{{ route('backend.payment-note.index') }}" class="btn btn-outline-secondary">
                         <i class="bi bi-arrow-left me-1"></i>Back to Payment Notes
                     </a>
@@ -47,6 +67,36 @@
     <div class="row">
         <!-- Main Content -->
         <div class="col-lg-8">
+            <!-- Edit Permission Info Alert -->
+            @php
+                $currentApproverId = $note->getCurrentPendingApprover();
+                $currentApprover = $currentApproverId ? \App\Models\User::find($currentApproverId) : null;
+            @endphp
+            
+            @if($note->status === 'P' && !$note->isDraft())
+                @if($note->canBeEditedBy(auth()->id()))
+                    <div class="alert alert-info border-0 shadow-sm mb-4">
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-info-circle-fill me-3 fs-4"></i>
+                            <div>
+                                <h6 class="mb-1 fw-bold">You Can Edit This Payment Note</h6>
+                                <p class="mb-0 small">You are the current pending approver. You can edit this payment note before approving or rejecting it.</p>
+                            </div>
+                        </div>
+                    </div>
+                @elseif($currentApprover)
+                    <div class="alert alert-warning border-0 shadow-sm mb-4">
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-lock-fill me-3 fs-4"></i>
+                            <div>
+                                <h6 class="mb-1 fw-bold">Edit Restricted</h6>
+                                <p class="mb-0 small">Only <strong>{{ $currentApprover->name }}</strong> (current pending approver) can edit this payment note.</p>
+                            </div>
+                        </div>
+                    </div>
+                @endif
+            @endif
+
             <!-- Note Information Section -->
             <div class="card border-0 shadow-sm mb-4">
                 <div class="card-header bg-white border-0 py-3">
@@ -363,16 +413,18 @@
                                     @endif
 
                                     <div>
-                                        @if ($step->status == 'A')
-                                            <span class="badge bg-success">Approved</span>
-                                        @elseif($step->status == 'P')
-                                            <span class="badge bg-warning text-dark">Draft</span>
-                                        @elseif($step->status == 'R')
-                                            <span class="badge bg-danger">Rejected</span>
-                                        @elseif($step->status == 'S')
-                                            <span class="badge bg-success">Approved</span>
-                                        @else
-                                            <span class="badge bg-secondary">{{ $step->status }}</span>
+                                        @if ($index > 0) {{-- Only show status badge for reviewers, not for maker --}}
+                                            @if ($step->status == 'A')
+                                                <span class="badge bg-success">Approved</span>
+                                            @elseif($step->status == 'P')
+                                                <span class="badge bg-warning text-dark">Pending</span>
+                                            @elseif($step->status == 'R')
+                                                <span class="badge bg-danger">Rejected</span>
+                                            @elseif($step->status == 'S')
+                                                <span class="badge bg-success">Approved</span>
+                                            @else
+                                                <span class="badge bg-secondary">{{ $step->status }}</span>
+                                            @endif
                                         @endif
                                     </div>
 
@@ -385,22 +437,202 @@
                         @endforeach
 
                         <!-- Next Approvers (if applicable) -->
-                        @if ($note->status != 'A')
-                            @if ($note->paymentApprovalLogs->last()?->logPriorities->last()?->priority)
+                        @if ($note->status != 'A' && $note->status != 'R' && $note->status != 'PD')
+                            @php
+                                $nextApprovers = collect();
+
+                                // Check if there are any pending approval logs (status = 'P')
+                                $pendingLogs = $note->paymentApprovalLogs->where('status', 'P');
+
+                                if ($pendingLogs->isNotEmpty()) {
+                                    // Show approvers from the most recent pending log
+                                    $lastPendingLog = $pendingLogs->last();
+                                    foreach ($lastPendingLog->logPriorities as $logPriority) {
+                                        if ($logPriority->priority && $logPriority->priority->user) {
+                                            $nextApprovers->push($logPriority->priority->user);
+                                        }
+                                    }
+                                }
+
+                                // If no pending approvers, find the appropriate approval step and determine next level
+                                if ($nextApprovers->isEmpty()) {
+                                    $approvalStep = \App\Models\PaymentNoteApprovalStep::where('min_amount', '<=', $note->net_payable_round_off)
+                                        ->where(function ($query) use ($note) {
+                                            $query->where('max_amount', '>=', $note->net_payable_round_off)
+                                                  ->orWhereNull('max_amount');
+                                        })
+                                        ->orderBy('min_amount', 'desc') // Get the most specific step
+                                        ->with('approvers.user')
+                                        ->first();
+
+                                    if ($approvalStep) {
+                                        // Determine the next approval level based on approved logs only
+                                        $approvedLogs = $note->paymentApprovalLogs->where('status', 'A')->count();
+                                        $nextLevel = $approvedLogs + 1; // Next level after approved ones
+
+                                        // Get approvers for the next level (excluding already approved users)
+                                        $approvedUsers = $note->paymentApprovalLogs->where('status', 'A')->pluck('reviewer_id')->toArray();
+                                        $nextLevelApprovers = $approvalStep->approvers->where('approver_level', $nextLevel)
+                                            ->whereNotIn('reviewer_id', $approvedUsers); // Exclude already approved users
+
+                                        foreach ($nextLevelApprovers as $approver) {
+                                            if ($approver->user) {
+                                                $nextApprovers->push($approver->user);
+                                            }
+                                        }
+                                    }
+                                }
+
+                                // Define $lastLog for step display (could be any log, not necessarily pending)
+                                $lastLog = $note->paymentApprovalLogs->last();
+                            @endphp
+
+                            @if ($nextApprovers->isNotEmpty())
                                 <div class="d-flex align-items-center position-relative mb-4" style="padding-left: 30px;">
-                                    <div class="position-absolute bg-primary rounded-circle"
+                                    <div class="position-absolute bg-warning rounded-circle"
                                          style="width: 12px; height: 12px; left: 5px;"></div>
                                     <div>
-                                        <p class="fw-bold mb-1">Next Approvers:</p>
+                                        <p class="fw-bold mb-1 text-warning">Next Approver(s):</p>
                                         <p class="text-muted small">
-                                            @foreach ($note->paymentApprovalLogs->last()?->logPriorities as $log)
-                                                {{ $log->priority->user->name }}
-                                                @if (!$loop->last), @endif
+                                            @foreach ($nextApprovers as $approver)
+                                                <span class="badge bg-warning text-dark me-1">{{ $approver->name }}</span>
                                             @endforeach
                                         </p>
+                                        @if ($lastLog)
+                                            <small class="text-muted">
+                                                @php
+                                                    // Calculate the correct current step
+                                                    $approvedLogs = $note->paymentApprovalLogs->where('status', 'A')->count();
+                                                    $pendingLogs = $note->paymentApprovalLogs->where('status', 'P')->count();
+                                                    $currentStep = $approvedLogs + $pendingLogs;
+                                                @endphp
+                                                Step {{ $currentStep }} •
+                                                Submitted {{ $lastLog->created_at->setTimezone('Asia/Kolkata')->format('d/m/Y h:i A') }}
+                                            </small>
+                                        @endif
+                                    </div>
+                                </div>
+                            @else
+                                <div class="d-flex align-items-center position-relative mb-4" style="padding-left: 30px;">
+                                    <div class="position-absolute bg-info rounded-circle"
+                                         style="width: 12px; height: 12px; left: 5px;"></div>
+                                    <div>
+                                        <p class="fw-bold mb-1 text-info">Next Approver:</p>
+                                        <p class="text-muted small">
+                                            @php
+                                                // STEP 1: Check if any users have approved this payment note
+                                                $approvedUsers = $note->paymentApprovalLogs->where('status', 'A')->pluck('reviewer_id')->toArray();
+
+                                                // STEP 2: Find the appropriate approval step for this amount
+                                                $approvalStep = \App\Models\PaymentNoteApprovalStep::where('min_amount', '<=', $note->net_payable_round_off)
+                                                    ->where(function ($query) use ($note) {
+                                                        $query->where('max_amount', '>=', $note->net_payable_round_off)
+                                                              ->orWhereNull('max_amount');
+                                                    })
+                                                    ->orderBy('min_amount', 'desc') // Get the most specific step
+                                                    ->with('approvers.user')
+                                                    ->first();
+
+                                                if ($approvalStep) {
+                                                    // STEP 3: Determine the next approval level
+                                                    // Count how many APPROVED logs exist (not pending)
+                                                    $approvedLogsCount = $note->paymentApprovalLogs->where('status', 'A')->count();
+                                                    
+                                                    // Current active level = approved count + 1
+                                                    // Next level after approval = approved count + 2
+                                                    // But for display, we show the CURRENT level (where it's pending)
+                                                    $currentLevel = $approvedLogsCount + 1;
+
+                                                    // STEP 4: Get approvers for the current pending level
+                                                    $nextLevelApprovers = $approvalStep->approvers->where('approver_level', $currentLevel);
+
+                                                    if ($nextLevelApprovers->isNotEmpty()) {
+                                                        foreach ($nextLevelApprovers as $index => $approver) {
+                                                            if ($approver->user) {
+                                                                echo $approver->user->name;
+                                                                if ($index < $nextLevelApprovers->count() - 1) echo ", ";
+                                                            }
+                                                        }
+                                                    } else {
+                                                        // No approvers configured for current level
+                                                        if ($approvedLogsCount > 0) {
+                                                            echo '<span class="text-success">✓ All required approvals completed</span>';
+                                                        } else {
+                                                            echo '<span class="text-danger">⚠ No approvers configured for Level ' . $currentLevel . '</span>';
+                                                        }
+                                                    }
+                                                } else {
+                                                    echo '<div style="background: #ffebee; padding: 10px; margin: 10px 0; border-left: 4px solid #f44336;">';
+                                                    echo '<strong>ERROR:</strong> No approval step found for amount ₹' . number_format($note->net_payable_round_off);
+                                                    echo '<br><small>Please check approval rules configuration</small>';
+                                                    echo '</div>';
+                                                }
+                                            @endphp
+                                        </p>
+                                        @if ($approvalStep)
+                                            <small class="text-muted">
+                                                @php
+                                                    // Show a simple message instead of confusing range display
+                                                    $paymentAmount = $note->net_payable_round_off;
+                                                    if ($approvalStep->max_amount) {
+                                                        echo 'Amount falls in configured range';
+                                                    } else {
+                                                        echo 'Amount meets approval requirements';
+                                                    }
+                                                @endphp
+                                            </small>
+                                        @endif
                                     </div>
                                 </div>
                             @endif
+                        @endif
+
+                        <!-- Final Approval Status -->
+                        @if ($note->status == 'A')
+                            <div class="d-flex align-items-center position-relative mb-4" style="padding-left: 30px;">
+                                <div class="position-absolute bg-success rounded-circle"
+                                     style="width: 12px; height: 12px; left: 5px;"></div>
+                                <div>
+                                    <p class="fw-bold mb-1 text-success">
+                                        <i class="bi bi-check-circle-fill me-2"></i>Approval Complete
+                                    </p>
+                                    <p class="text-muted small">
+                                        <span class="badge bg-success">Fully Approved</span>
+                                    </p>
+                                    @php
+                                        $lastApproval = $note->paymentApprovalLogs->where('status', 'A')->last();
+                                    @endphp
+                                    @if ($lastApproval)
+                                        <small class="text-muted">
+                                            Final approval by {{ $lastApproval->reviewer->name }} on
+                                            {{ $lastApproval->created_at->setTimezone('Asia/Kolkata')->format('d/m/Y h:i A') }}
+                                        </small>
+                                    @endif
+                                </div>
+                            </div>
+                        @elseif ($note->status == 'R')
+                            <div class="d-flex align-items-center position-relative mb-4" style="padding-left: 30px;">
+                                <div class="position-absolute bg-danger rounded-circle"
+                                     style="width: 12px; height: 12px; left: 5px;"></div>
+                                <div>
+                                    <p class="fw-bold mb-1 text-danger">
+                                        <i class="bi bi-x-circle-fill me-2"></i>Approval Rejected
+                                    </p>
+                                    <p class="text-muted small">
+                                        <span class="badge bg-danger">Rejected</span>
+                                    </p>
+                                    @php
+                                        $lastRejection = $note->paymentApprovalLogs->where('status', 'R')->last();
+                                    @endphp
+                                    @if ($lastRejection && $lastRejection->comments)
+                                        <small class="text-muted">
+                                            Rejected by {{ $lastRejection->reviewer->name }} on
+                                            {{ $lastRejection->created_at->setTimezone('Asia/Kolkata')->format('d/m/Y h:i A') }}
+                                            <br><strong>Reason:</strong> {{ $lastRejection->comments }}
+                                        </small>
+                                    @endif
+                                </div>
+                            </div>
                         @endif
                     </div>
                 </div>
@@ -409,20 +641,24 @@
             <!-- Approval Actions Section -->
             @php
                 $userRoles = auth()->user()->getRoleNames();
-                $lastStep = $note->paymentApprovalLogs->last();
                 $showButton = false;
-                if ($lastStep && $lastStep->status != 'R') {
-                    foreach ($lastStep->logPriorities as $logPriority) {
-                        if ($logPriority->priority->reviewer_id == auth()->user()->id) {
-                            $showButton = true;
-                            break;
+
+                // Check if there are pending logs for the current user
+                $pendingLogs = $note->paymentApprovalLogs->where('status', 'P');
+                if ($pendingLogs->isNotEmpty()) {
+                    foreach ($pendingLogs as $log) {
+                        foreach ($log->logPriorities as $logPriority) {
+                            if ($logPriority->priority && $logPriority->priority->user && $logPriority->priority->user->id == auth()->user()->id) {
+                                $showButton = true;
+                                break 2;
+                            }
                         }
                     }
                 }
             @endphp
 
             @if ($showButton)
-                <div class="card border-0 shadow-sm">
+                <div class="card border-0 shadow-sm mb-4">
                     <div class="card-header bg-white border-0 py-3">
                         <h5 class="card-title mb-0">
                             <i class="bi bi-check-circle text-primary me-2"></i>Approval Actions
@@ -430,6 +666,14 @@
                     </div>
                     <div class="card-body p-4">
                         <div class="d-grid gap-2">
+                            <!-- Edit Button - Only for Current Approver -->
+                            @if($note->canBeEditedBy(auth()->id()))
+                                <a href="{{ route('backend.payment-note.edit', $note->id) }}" class="btn btn-primary w-100">
+                                    <i class="bi bi-pencil-square me-1"></i>Edit Payment Note
+                                </a>
+                                <hr class="my-2">
+                            @endif
+
                             <form id="approveForm" action="{{ route('backend.payment-note-approval.approvalLogUpdate', $note->id) }}" method="POST">
                                 @csrf
                                 <input type="hidden" name="status" value="A">
@@ -458,6 +702,26 @@
                                     </button>
                                 </form>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            @endif
+
+            <!-- Quick Actions for SuperAdmin or Creator -->
+            @if(!$showButton && ($note->canBeEditedBy(auth()->id()) || auth()->user()->hasRole('Super Admin')))
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-white border-0 py-3">
+                        <h5 class="card-title mb-0">
+                            <i class="bi bi-gear text-primary me-2"></i>Quick Actions
+                        </h5>
+                    </div>
+                    <div class="card-body p-4">
+                        <div class="d-grid gap-2">
+                            @if($note->canBeEditedBy(auth()->id()))
+                                <a href="{{ route('backend.payment-note.edit', $note->id) }}" class="btn btn-primary w-100">
+                                    <i class="bi bi-pencil-square me-1"></i>Edit Payment Note
+                                </a>
+                            @endif
                         </div>
                     </div>
                 </div>
@@ -494,6 +758,42 @@
 
     .bg-primary {
         background-color: #0d6efd !important;
+    }
+
+    .bg-warning {
+        background-color: #ffc107 !important;
+    }
+
+    .bg-success {
+        background-color: #198754 !important;
+    }
+
+    .bg-danger {
+        background-color: #dc3545 !important;
+    }
+
+    .bg-secondary {
+        background-color: #6c757d !important;
+    }
+
+    .text-warning {
+        color: #ffc107 !important;
+    }
+
+    .text-success {
+        color: #198754 !important;
+    }
+
+    .text-danger {
+        color: #dc3545 !important;
+    }
+
+    .bg-info {
+        background-color: #0dcaf0 !important;
+    }
+
+    .text-info {
+        color: #0dcaf0 !important;
     }
 
     /* Table styling */

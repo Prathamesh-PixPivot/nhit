@@ -3,11 +3,9 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use App\Traits\UsesOrganizationDatabase;
 
 class PaymentNoteApprovalLog extends Model
 {
-    use UsesOrganizationDatabase;
     
     /**
      * The connection name for the model.

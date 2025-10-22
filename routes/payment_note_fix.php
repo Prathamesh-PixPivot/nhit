@@ -12,10 +12,11 @@ use App\Http\Controllers\Backend\PaymentNote\PaymentNoteController;
 |
 */
 
-// Basic payment note routes (already exist, but making sure they work)
-Route::middleware(['auth'])->prefix('backend')->name('backend.')->group(function () {
-    Route::resource('payment-note', PaymentNoteController::class);
-});
+// Basic payment note routes are now defined in backend.php
+// Route::resource() is commented out to avoid duplicate routes with snake_case parameters
+// Route::middleware(['auth'])->prefix('backend')->name('backend.')->group(function () {
+//     Route::resource('payment-note', PaymentNoteController::class);
+// });
 
 // Additional payment note routes for new features
 Route::middleware(['auth'])->prefix('backend')->name('backend.')->group(function () {

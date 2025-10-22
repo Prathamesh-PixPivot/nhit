@@ -304,13 +304,64 @@ class PaymentNoteController extends Controller
                 'recommendation_of_payment' => $validated['recommendation_of_payment'],
                 'add_particulars' => json_encode($addParticulars),
                 'less_particulars' => json_encode($lessParticulars),
-                'status' => 'D',
+                'status' => 'P', // Set to Pending to trigger approval flow
             ]);
 
-            return redirect()->route('backend.payment-note.index')->with('success', 'Payment Note added successfully.');
+            // Create initial approval log based on amount range and priorities
+            $this->createInitialApprovalLogForPaymentNote($note);
+
+            return redirect()->route('backend.payment-note.index')->with('success', 'Payment Note added successfully and sent for approval.');
         } catch (\Throwable $th) {
             return back()->with('error', 'Something went wrong.' . $th);
         }
+    }
+
+    /**
+     * Create initial approval log for a payment note based on amount range
+     */
+    private function createInitialApprovalLogForPaymentNote(PaymentNote $paymentNote)
+    {
+        // Find the correct approval step based on payment amount
+        $approvalStep = PaymentNoteApprovalStep::where('min_amount', '<=', $paymentNote->net_payable_round_off)
+            ->where(function ($query) use ($paymentNote) {
+                $query->where('max_amount', '>=', $paymentNote->net_payable_round_off)
+                      ->orWhereNull('max_amount');
+            })
+            ->orderBy('min_amount', 'desc')
+            ->first();
+
+        if (!$approvalStep) {
+            \Log::warning("No approval step found for payment amount: {$paymentNote->net_payable_round_off}");
+            return;
+        }
+
+        // Get Level 1 approvers for this amount range
+        $level1Approvers = PaymentNoteApprovalPriority::where('approval_step_id', $approvalStep->id)
+            ->where('approver_level', 1)
+            ->get();
+
+        if ($level1Approvers->isEmpty()) {
+            \Log::warning("No Level 1 approvers found for approval step {$approvalStep->id}");
+            return;
+        }
+
+        // Create approval log for the first Level 1 approver
+        $firstApprover = $level1Approvers->first();
+        $log = PaymentNoteApprovalLog::create([
+            'payment_note_id' => $paymentNote->id,
+            'priority_id' => $firstApprover->id,
+            'reviewer_id' => $firstApprover->reviewer_id,
+            'status' => 'P', // Pending
+            'comments' => 'Submitted for approval',
+        ]);
+
+        // Attach all Level 1 approvers to this log
+        $level1ApproverIds = $level1Approvers->pluck('id')->toArray();
+        if (!empty($level1ApproverIds)) {
+            $log->priorities()->attach($level1ApproverIds);
+        }
+
+        \Log::info("Initial approval log created for Payment Note {$paymentNote->id} with Level 1 approvers");
     }
 
     function convertNumberToWords($number)
@@ -401,11 +452,19 @@ class PaymentNoteController extends Controller
      */
     public function show(PaymentNote $paymentNote)
     {
-        $note = $paymentNote;
-
-        if (!$note) {
+        // Check if the payment note exists
+        if (!$paymentNote || !$paymentNote->exists) {
             return abort(404, 'Payment Note not found');
         }
+
+        $note = $paymentNote->load([
+            'paymentApprovalLogs.logPriorities.priority.user',
+            'greenNote.supplier',
+            'reimbursementNote',
+            'user',
+            'comments.user'
+        ]);
+
         $lessParticulars = json_decode($note->less_particulars, true) ?? [];
         $addParticulars = json_decode($note->add_particulars, true) ?? [];
 
@@ -432,7 +491,7 @@ class PaymentNoteController extends Controller
     }
 
     /**
-     * Show the form for editing the specified resource.
+     * Show the form for editing the specified resource (STATUS ONLY).
      */
     public function edit(PaymentNote $paymentNote)
     {
@@ -441,28 +500,53 @@ class PaymentNoteController extends Controller
         if (!$note) {
             return abort(404, 'Payment Note not found');
         }
-        $grossAmount = ($note->greenNote->invoice_base_value ?? 0) + ($note->greenNote->invoice_gst ?? 0) + ($note->greenNote->invoice_other_charges ?? 0);
 
-        $lessParticulars = json_decode($note->less_particulars, true) ?? [];
-        $addParticulars = json_decode($note->add_particulars, true) ?? [];
-        $documents = collect();
-        if ($note->green_note_id) {
-            $documents = SupportingDoc::where('green_note_id', $note->greenNote->id)->get();
+        // Check if user can edit this payment note
+        if (!$note->canBeEditedBy(auth()->id())) {
+            return redirect()
+                ->route('backend.payment-note.show', $note)
+                ->with('error', 'You do not have permission to edit this payment note. Only the current pending approver can edit.');
         }
 
-        return view('backend.paymentNote.edit', compact('note', 'lessParticulars', 'addParticulars', 'grossAmount', 'documents'));
+        // Return status-only edit view (not full edit)
+        return view('backend.paymentNote.edit-status', compact('note'));
     }
 
     /**
-     * Update the specified resource in storage.
+     * Update the specified resource in storage (STATUS ONLY).
      */
     public function update(Request $request, PaymentNote $paymentNote)
     {
+        // Check if user can edit this payment note
+        if (!$paymentNote->canBeEditedBy(auth()->id())) {
+            return redirect()
+                ->route('backend.payment-note.show', $paymentNote)
+                ->with('error', 'You do not have permission to update this payment note. Only the current pending approver can edit.');
+        }
+
+        // Check if this is a status-only edit
+        if ($request->has('status_only_edit')) {
+            // Validate only the status field
+            $validated = $request->validate([
+                'status' => 'required|in:D,P,A,R,S,PD',
+            ]);
+
+            // Update only the status
+            $paymentNote->update([
+                'status' => $validated['status'],
+            ]);
+
+            return redirect()
+                ->route('backend.payment-note.show', $paymentNote)
+                ->with('success', 'Payment note status updated successfully to: ' . $validated['status']);
+        }
+
+        // Original full update logic (for backward compatibility if needed)
         $validated = $request->validate([
             'subject' => 'required|string',
             'note_no' => 'required|string',
             'recommendation_of_payment' => 'nullable|string',
-            'status' => 'required|in:D,P,A,R,S',
+            'status' => 'required|in:D,P,A,R,S,PD',
             'net_payable_round_off' => 'nullable|string',
             'add_particulars' => 'nullable|array',
             'add_particulars.*.particular' => 'nullable|string',
@@ -508,13 +592,16 @@ class PaymentNoteController extends Controller
         ]);
 
         if ($request->status == 'S') {
+            // Find the most specific approval step for this amount (highest min_amount that is <= payment amount)
             $approvalStep = PaymentNoteApprovalStep::where('min_amount', '<=', $request->net_payable_round_off ?? 0)
                 ->where(function ($query) use ($request) {
                     $query->where('max_amount', '>=', $request->net_payable_round_off ?? 0)->orWhereNull('max_amount');
                 })
+                ->orderBy('min_amount', 'desc') // Get the most specific (highest min_amount) step first
                 ->first();
+
             if (!$approvalStep) {
-                return redirect()->back()->with('success', 'Approval step 1 not found.');
+                return redirect()->back()->with('error', 'No approval configuration found for this amount.');
             }
             // rule
 

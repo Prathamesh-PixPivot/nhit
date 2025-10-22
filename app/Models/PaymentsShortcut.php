@@ -6,11 +6,10 @@ use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use App\Traits\UsesOrganizationDatabase;
 
 class PaymentsShortcut extends Model
 {
-    use HasFactory, SoftDeletes, UsesOrganizationDatabase;
+    use HasFactory, SoftDeletes;
     
     /**
      * The connection name for the model.

@@ -192,66 +192,103 @@ class PaymentNoteApprovalController extends Controller
             return redirect()->back()->with('error', 'You have already submitted your approval.');
         }
 
-        $approvalStepNew = PaymentNoteApprovalPriority::find($existingLogsCountFirst->priority_id);
-        $nextStep = $existingLogsCount + 1;
-        $approvalStepCurrent = PaymentNoteApprovalPriority::where('approver_level', $existingLogsCount)->where('approval_step_id', $approvalStepNew->approval_step_id)->first();
-        $approvalStep = PaymentNoteApprovalPriority::where('approver_level', $nextStep)->where('approval_step_id', $approvalStepNew->approval_step_id)->first();
-        $allApprovalStep = PaymentNoteApprovalPriority::where('approver_level', $nextStep)->where('approval_step_id', $approvalStepNew->approval_step_id)->pluck('id')->toArray();
+        $existingLogsCount = PaymentNoteApprovalLog::where('payment_note_id', $note->id)->count();
+        $existingLogsCountFirst = PaymentNoteApprovalLog::where('payment_note_id', $note->id)->first();
+        $userAlreadySubmitted = PaymentNoteApprovalLog::where('payment_note_id', $note->id)
+            ->where('reviewer_id', auth()->id())
+            ->where('status', '!=', 'P')
+            ->exists();
 
-        if (!$approvalStepCurrent) {
-            return redirect()->back()->with('success', 'Approval step 1 not found.');
+        if ($userAlreadySubmitted) {
+            return redirect()->back()->with('error', 'You have already submitted your approval.');
         }
 
+        // Find the correct approval step for this payment amount
+        $approvalStep = PaymentNoteApprovalStep::where('min_amount', '<=', $note->net_payable_round_off)
+            ->where(function ($query) use ($note) {
+                $query->where('max_amount', '>=', $note->net_payable_round_off)->orWhereNull('max_amount');
+            })
+            ->orderBy('min_amount', 'desc') // Get the most specific step
+            ->first();
+
         if (!$approvalStep) {
+            return redirect()->back()->with('error', 'No approval configuration found for this amount.');
+        }
+
+        // Determine the current approval level based on approved logs only
+        $approvedLogs = PaymentNoteApprovalLog::where('payment_note_id', $note->id)
+            ->where('status', 'A')
+            ->count();
+
+        $currentLevel = $approvedLogs + 1; // Current active level
+        $nextLevel = $approvedLogs + 2; // Next level after approval
+
+        // Get the current level approver (for validation - this is the person approving now)
+        $currentLevelApprover = PaymentNoteApprovalPriority::where('approver_level', $currentLevel)
+            ->where('approval_step_id', $approvalStep->id)
+            ->first();
+
+        // Get the next level approver (where it goes after approval)
+        $nextLevelApprover = PaymentNoteApprovalPriority::where('approver_level', $nextLevel)
+            ->where('approval_step_id', $approvalStep->id)
+            ->first();
+
+        // Get all approvers for the next level (for attaching to log)
+        $allNextLevelApprovers = PaymentNoteApprovalPriority::where('approver_level', $nextLevel)
+            ->where('approval_step_id', $approvalStep->id)
+            ->pluck('id')
+            ->toArray();
+
+        if (!$currentLevelApprover) {
+            return redirect()->back()->with('error', 'Current approval level not found. You may not be authorized to approve at this stage.');
+        }
+
+        if (!$nextLevelApprover) {
+            // This is the final approval - mark as fully approved
             PaymentNoteApprovalLog::create([
                 'payment_note_id' => $note->id,
-                'priority_id' => $approvalStepCurrent->id,
+                'priority_id' => $currentLevelApprover->id,
                 'reviewer_id' => auth()->id(),
                 'status' => $request->status,
                 'comments' => $request->remarks ?? null,
             ]);
 
-            if ($note->greenNote) {
-                $name = $note->greenNote->supplier->vendor_name ?? null;
-                $nameProject = $note->greenNote->vendor->project;
-            } elseif ($note->reimbursementNote) {
-                $name = $note->reimbursementNote->project->project;
-                $nameProject = $note->reimbursementNote->project->project;
-            } else {
-                $name = '';
-                $nameProject = '';
-            }
+            // Update payment note status to approved
+            $note->status = 'A';
+            $note->save();
 
-            $data = [
-                'updated_by' => auth()->user()->email,
-                'subject' => 'Payment Note for ' . $name . ' of Rs ' . $note->net_payable_round_off . ' is Approved & due for NEFT/RTGS.',
-                'approver_name' => $approvalStepCurrent->user->name == auth()->user()->name ? 'Maker' : $approvalStepCurrent->user->name,
-                'maker' => $approvalStepCurrent->user->name . ' has Approved the Payment Note No. ' . $note->note_no . ' for ' . $name . ' of Rs ' . $note->net_payable_round_off . ' for ' . $nameProject . ' kindly pay through RTGS/NEFT.',
-                'end' => 'Login to the panel for review & process.',
-            ];
+            // Update related green note status if exists
             if ($note->greenNote) {
-                $note->greenNote->status = 'PNA';
+                $note->greenNote->status = 'PNA'; // Payment Note Approved
                 $note->greenNote->save();
             }
 
-            // Mail::to('girabo8955@forcrack.com')->send(new NoteStatusChangeMail($data));
-            Mail::to($note->user->email)->send(new NoteStatusChangeMail($data));
-            $note->status = $request->status;
-            $note->save();
-            return redirect()->route('backend.payment-note.index')->with('success', 'Final step reached. No further approvals needed.');
+            return redirect()->route('backend.payment-note.index')->with('success', 'Payment note fully approved.');
         }
 
         if ($request->status == 'A') {
-            $log = PaymentNoteApprovalLog::create([
+            // First, record the current user's approval
+            PaymentNoteApprovalLog::create([
                 'payment_note_id' => $note->id,
-                'priority_id' => $approvalStep->id,
+                'priority_id' => $currentLevelApprover->id,
                 'reviewer_id' => auth()->id(),
-                'status' => $request->status,
+                'status' => 'A', // Approved
                 'comments' => $request->remarks ?? null,
             ]);
-            if (!empty($allApprovalStep)) {
-                $log->priorities()->attach($allApprovalStep);
+
+            // Then create a NEW log for the next level approver with Pending status
+            $log = PaymentNoteApprovalLog::create([
+                'payment_note_id' => $note->id,
+                'priority_id' => $nextLevelApprover->id,
+                'reviewer_id' => $nextLevelApprover->reviewer_id, // The NEXT approver, not current user
+                'status' => 'P', // Pending - waiting for their approval
+                'comments' => 'Forwarded for approval',
+            ]);
+            if (!empty($allNextLevelApprovers)) {
+                $log->priorities()->attach($allNextLevelApprovers);
             }
+
+            // Send notifications
             if ($note->greenNote) {
                 $name = $note->greenNote->supplier->vendor_name ?? null;
                 $nameProject = $note->greenNote->vendor->project;
@@ -266,8 +303,8 @@ class PaymentNoteApprovalController extends Controller
             // Mail Send
             $data = [
                 'updated_by' => auth()->user()->email,
-                'subject' => 'Payment Note for ' . $name . 'of Rs ' . $note->net_payable_round_off . ' is due for Approval',
-                'approver_name' => $approvalStep->user->name ?? 'Approver',
+                'subject' => 'Payment Note for ' . $name . ' of Rs ' . $note->net_payable_round_off . ' is due for Approval',
+                'approver_name' => $nextLevelApprover->user->name ?? 'Approver',
                 'maker' => $note->user->name . ' generated a Payment Note ' . $note->note_no . ' for ' . $name . ' of Rs ' . $note->net_payable_round_off . ' for ' . $nameProject . ' & due for your review.',
                 'end' => 'Login to the panel for review & Approval',
             ];
@@ -276,14 +313,14 @@ class PaymentNoteApprovalController extends Controller
             $makerData = [
                 'updated_by' => 'Maker',
                 'subject' => 'Your Payment Note ' . $note->note_no . ' has been sent for Approval',
-                'approver_name' => $approvalStep->user->name ?? 'Approver',
-                'maker' => 'You created a Payment Note ' . $note->note_no . ' for ' . $name . ' of Rs ' . $note->net_payable_round_off . ' for ' . $nameProject . '. It has been forwarded to ' . ($approvalStep->user->name ?? 'Approver') . ' for approval.',
+                'approver_name' => $nextLevelApprover->user->name ?? 'Approver',
+                'maker' => 'You created a Payment Note ' . $note->note_no . ' for ' . $name . ' of Rs ' . $note->net_payable_round_off . ' for ' . $nameProject . '. It has been forwarded to ' . ($nextLevelApprover->user->name ?? 'Approver') . ' for approval.',
                 'end' => 'You will be notified once it is reviewed.',
             ];
             // Mail Send
             // Mail::to('girabo8955@forcrack.com')->send(new NoteStatusChangeMail($data));
-            if ($approvalStep->user->email !== auth()->user()->email) {
-                Mail::to($approvalStep->user->email)->send(new NoteStatusChangeMail($data));
+            if ($nextLevelApprover->user->email !== auth()->user()->email) {
+                Mail::to($nextLevelApprover->user->email)->send(new NoteStatusChangeMail($data));
             }
             Mail::to($note->user->email)->send(new NoteStatusChangeMail($makerData));
             $note->status = 'S';
@@ -291,7 +328,7 @@ class PaymentNoteApprovalController extends Controller
             return redirect()->route('backend.payment-note.index')->with('success', 'Approval log created for the next step.');
         } else {
             PaymentNoteApprovalLog::create([
-                'priority_id' => $approvalStepCurrent->id,
+                'priority_id' => $currentLevelApprover->id,
                 'payment_note_id' => $note->id,
                 'reviewer_id' => auth()->id(),
                 'status' => $request->status,
@@ -317,8 +354,8 @@ class PaymentNoteApprovalController extends Controller
             $data = [
                 'updated_by' => auth()->user()->email,
                 'subject' => 'Payment Note for' . $name . 'of Rs ' . $note->net_payable_round_off . ' has been Rejected',
-                'approver_name' => $approvalStepCurrent->user->name ?? 'Approver',
-                'maker' => $approvalStepCurrent->user->name . ' has Rejected The payment Note No. ' . $note->note_no . ' for ' . $name . ' of Rs ' . $note->net_payable_round_off . ' for ' . $nameProject,
+                'approver_name' => $currentLevelApprover->user->name ?? 'Approver',
+                'maker' => $currentLevelApprover->user->name . ' has Rejected The payment Note No. ' . $note->note_no . ' for ' . $name . ' of Rs ' . $note->net_payable_round_off . ' for ' . $nameProject,
                 'rejection' => $request->remarks ?? null,
                 'end' => 'Login to the panel for review & process.',
             ];

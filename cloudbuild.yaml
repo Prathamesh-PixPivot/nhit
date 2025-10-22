@@ -1,0 +1,54 @@
+# Google Cloud Build Configuration
+steps:
+  # Build the Docker image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: [
+      'build',
+      '-t', 'gcr.io/$PROJECT_ID/nhit-app:$COMMIT_SHA',
+      '-t', 'gcr.io/$PROJECT_ID/nhit-app:latest',
+      '.'
+    ]
+
+  # Push the Docker image to Container Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/nhit-app:$COMMIT_SHA']
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/nhit-app:latest']
+
+  # Deploy to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args: [
+      'run', 'deploy', 'nhit-app',
+      '--image', 'gcr.io/$PROJECT_ID/nhit-app:$COMMIT_SHA',
+      '--region', 'us-central1',
+      '--platform', 'managed',
+      '--allow-unauthenticated',
+      '--memory', '2Gi',
+      '--cpu', '1',
+      '--max-instances', '10',
+      '--min-instances', '1',
+      '--port', '80',
+      '--set-env-vars', 'APP_ENV=production,APP_DEBUG=false',
+      '--update-secrets', 'APP_KEY=nhit-secrets:app-key:latest',
+      '--update-secrets', 'DB_HOST=nhit-secrets:db-host:latest',
+      '--update-secrets', 'DB_DATABASE=nhit-secrets:db-name:latest',
+      '--update-secrets', 'DB_USERNAME=nhit-secrets:db-username:latest',
+      '--update-secrets', 'DB_PASSWORD=nhit-secrets:db-password:latest',
+      '--update-secrets', 'REDIS_HOST=nhit-secrets:redis-host:latest',
+      '--update-secrets', 'REDIS_PASSWORD=nhit-secrets:redis-password:latest'
+    ]
+
+# Store images in Container Registry
+images:
+  - 'gcr.io/$PROJECT_ID/nhit-app:$COMMIT_SHA'
+  - 'gcr.io/$PROJECT_ID/nhit-app:latest'
+
+# Build configuration
+options:
+  machineType: 'E2_HIGHCPU_8'
+  diskSizeGb: '100'
+
+# Timeout for the entire build
+timeout: '1200s'

@@ -37,7 +37,7 @@ This deployment strategy:
 #### Option A: Automated Setup (Recommended)
 ```bash
 # SSH into your server
-ssh nhitAdmin@your-server-ip
+ssh nhitAdmin@192.168.20.1
 
 # Download and run the setup script
 curl -fsSL https://raw.githubusercontent.com/Prathamesh-PixPivot/nhit/main/deploy/server-setup-minimal.sh -o setup.sh
@@ -72,11 +72,11 @@ sudo reboot
 
 ```bash
 # From your local machine, copy the deployment script
-scp deploy/deploy-image.sh nhitAdmin@your-server-ip:/opt/nhit/
-scp docker-compose.prod.yml nhitAdmin@your-server-ip:/opt/nhit/
+scp deploy/deploy-image.sh nhitAdmin@192.168.20.1:/opt/nhit/
+scp docker-compose.prod.yml nhitAdmin@192.168.20.1:/opt/nhit/
 
 # SSH into server and make script executable
-ssh nhitAdmin@your-server-ip
+ssh nhitAdmin@192.168.20.1
 chmod +x /opt/nhit/deploy-image.sh
 ```
 
@@ -84,7 +84,7 @@ chmod +x /opt/nhit/deploy-image.sh
 
 ```bash
 # SSH into your server
-ssh nhitAdmin@your-server-ip
+ssh nhitAdmin@192.168.20.1
 
 # Create production environment file
 nano /opt/nhit/.env.prod
@@ -171,7 +171,7 @@ APP_URL=https://yourdomain.com
 ssh-keygen -t rsa -b 4096 -C "deployment@nhit"
 
 # Copy public key to server
-ssh-copy-id -i ~/.ssh/id_rsa.pub your-user@your-server-ip
+ssh-copy-id -i ~/.ssh/id_rsa.pub your-user@192.168.20.1
 
 # Copy private key content for GitHub secret
 cat ~/.ssh/id_rsa
@@ -183,7 +183,7 @@ Before setting up automation, test manual deployment:
 
 ```bash
 # SSH into your server
-ssh your-user@your-server-ip
+ssh your-user@192.168.20.1
 
 # Pull a test image (nginx for testing)
 docker pull nginx:alpine
@@ -217,13 +217,13 @@ git push origin main
 
 ```bash
 # Check if containers are running
-ssh your-user@your-server-ip "docker ps"
+ssh your-user@192.168.20.1 "docker ps"
 
 # Check application health
-curl http://your-server-ip/health
+curl http://192.168.20.1/health
 
 # Check logs
-ssh your-user@your-server-ip "docker logs nhit-app"
+ssh your-user@192.168.20.1 "docker logs nhit-app"
 ```
 
 ---
@@ -234,7 +234,7 @@ ssh your-user@your-server-ip "docker logs nhit-app"
 
 ```bash
 # SSH into your server
-ssh your-user@your-server-ip
+ssh your-user@192.168.20.1
 
 # Check container status
 cd /opt/nhit
@@ -301,7 +301,7 @@ docker build -t ghcr.io/Prathamesh-PixPivot/nhit:latest .
 docker push ghcr.io/Prathamesh-PixPivot/nhit:latest
 
 # Deploy on server
-ssh your-user@your-server-ip "cd /opt/nhit && ./deploy-image.sh ghcr.io/Prathamesh-PixPivot/nhit:latest"
+ssh your-user@192.168.20.1 "cd /opt/nhit && ./deploy-image.sh ghcr.io/Prathamesh-PixPivot/nhit:latest"
 ```
 
 ---
@@ -382,7 +382,7 @@ docker-compose -f docker-compose.prod.yml up -d
 
 ```bash
 # Application health
-curl http://your-server-ip/health
+curl http://192.168.20.1/health
 
 # Container health
 docker ps --format "table {{.Names}}\t{{.Status}}"
@@ -487,7 +487,7 @@ docker-compose -f docker-compose.prod.yml exec app composer dump-autoload --opti
 ### Regular Maintenance Tasks
 
 **Daily:**
-- [ ] Check application health: `curl http://your-server-ip/health`
+- [ ] Check application health: `curl http://192.168.20.1/health`
 - [ ] Monitor resource usage: `docker stats --no-stream`
 
 **Weekly:**

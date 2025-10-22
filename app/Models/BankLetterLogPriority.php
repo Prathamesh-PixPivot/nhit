@@ -5,11 +5,10 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\Pivot;
-use App\Traits\UsesOrganizationDatabase;
 
 class BankLetterLogPriority extends Pivot
 {
-    use HasFactory, UsesOrganizationDatabase;
+    use HasFactory;
     
     /**
      * The connection name for the model.
